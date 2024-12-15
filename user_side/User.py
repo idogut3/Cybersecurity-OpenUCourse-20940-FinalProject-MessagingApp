@@ -9,21 +9,7 @@ class User:
         self.is_connected_to_server = False  # Boolean to track server connection status
         self.waiting_messages = []  # List of messages waiting to be processed
 
-    def display_options(self):
-        """Display available user options (CLI-based implementation)."""
-        print("1. Register to server")
-        print("2. Connect to server")
-        print("3. Add new connection")
-        print("4. Send message")
-        print("5. Show waiting messages")
 
-    def register_to_server(self):
-        """Register the user to the server."""
-        pass  # Implement the logic for server registration
-
-    def connect_to_server(self):
-        """Connect the user to the server."""
-        pass  # Implement the logic for server connection
 
     def is_connected_to(self, phone_number):
         """Check if the user is connected to another user by phone number."""
