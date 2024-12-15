@@ -1,4 +1,4 @@
-from server_side.User import User
+from User import User
 
 
 class DataBase:

@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, phone_number, public_key=None, secret_code=None):
+    def __init__(self, phone_number, public_key, secret_code):
         self.phone_number = phone_number  # String or int
         self.public_key = public_key  # Public key (e.g., string or bytes)
         self.secret_code = secret_code  # Secret code for verification/authentication
