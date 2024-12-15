@@ -1,6 +1,7 @@
 import random
 from enum import Enum
 
+
 class ProtocolsCodes(Enum):
     RegisterRequestProtocolCode = "We"
     ConnectRequestProtocolCode = "Love"
