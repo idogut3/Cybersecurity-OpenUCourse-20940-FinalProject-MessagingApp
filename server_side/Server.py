@@ -1,7 +1,7 @@
 import socket
 import threading
 
-from server_side.DataBase import DataBase
+from DataBase import DataBase
 
 
 class Server:
