@@ -13,14 +13,11 @@ class DataBase:
             return user2 in self.users[user1].connections
         return False
 
-    def register_user(self, phone_number):
+    def register_user(self, phone_number, public_key, secret_code):
         """
         Register a user with the given phone number.
-
-        if phone_number in self.users:
-            print(f"User with phone number {phone_number} is already registered.")
-            return False"""
-        self.users[phone_number] = User(phone_number=phone_number)##
+        """
+        self.users[phone_number] = User(phone_number, public_key, secret_code)
         return True
 
     def is_user_registered(self, phone_number):
