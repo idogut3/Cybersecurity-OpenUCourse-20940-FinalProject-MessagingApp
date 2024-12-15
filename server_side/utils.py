@@ -12,5 +12,6 @@ def send_by_secure_channel(code):
     return 2
 
 def generate_random_code():
-    return random.randint(100000, 999999)
+    """Generate a random 6-digit code as a string, preserving leading zeros."""
+    return f"{random.randint(0, 999999):06}"
 
