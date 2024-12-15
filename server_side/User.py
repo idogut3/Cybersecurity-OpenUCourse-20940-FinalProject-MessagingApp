@@ -6,11 +6,6 @@ class User:
         self.connections = {}  # Dictionary to store user connections
         self.waiting_messages = []  # List to store messages (list of Message objects)
 
-    # Setters
-    def set_public_key(self, public_key):
-        """Set the user's public key."""
-        self.public_key = public_key
-
     # Getters
     def get_public_key(self):
         """Get the user's public key."""
