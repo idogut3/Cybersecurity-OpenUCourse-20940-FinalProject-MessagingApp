@@ -1,7 +1,16 @@
 class User:
     def __init__(self, version, public_key, private_key, phone_number):
+        """
+        Initialize a User instance.
+
+        Args:
+            version (Integer): Application or protocol version.
+            public_key (EllipticCurvePublicKey): User's public key.
+            private_key (EllipticCurvePrivateKey): User's private key.
+            phone_number (str): User's phone number.
+        """
         self.version = version  # Application or protocol version
-        self.connections = {}  # Dictionary to store connections (phone_number -> User object)
+        self.connections = {}  # Dictionary to store connections (phone_number -> kdf_shared_secret)
         self.public_key = public_key  # User's public key
         self.private_key = private_key  # User's private key
         self.phone_number = phone_number  # User's phone number
@@ -10,31 +19,78 @@ class User:
         self.waiting_messages = []  # List of messages waiting to be processed
 
 
-
     def is_connected_to(self, phone_number):
-        """Check if the user is connected to another user by phone number."""
+        """
+        Check if the user is connected to another user by phone number.
+
+        Args:
+            phone_number (str): The phone number to check.
+
+        Returns:
+            bool: True if connected, False otherwise.
+        """
         return phone_number in self.connections
 
-    def add_new_connection(self, new_connection):
+
+    def add_new_connection(self, target_phone_number, kdf_shared_secret):
         """
         Add a new connection to the user's connections dictionary.
 
         Args:
-            new_connection (User): The new connection to be added.
+            target_phone_number (str): The phone number of the target user.
+            kdf_shared_secret (str): The shared secret (post-KDF) for secure communication.
         """
-        if new_connection.phone_number:
-            self.connections[new_connection.phone_number] = new_connection
+        if target_phone_number:
+            self.connections[target_phone_number] = kdf_shared_secret
+            print(f"Added connection to {target_phone_number} with shared secret.")
         else:
-            print("Error: The new connection does not have a valid phone number.")
+            print("Error: The target phone number is invalid.")
 
-    def send_message_to(self, phone_number):
+
+    def connect(self):
+        """
+        Connect the user to the server (login).
+        """
+        if self.is_connected_to_server:
+            print(f"User {self.phone_number} is already connected to the server.")
+            return
+
+        # Simulate server connection logic
+        self.is_connected_to_server = True
+        print(f"User {self.phone_number} successfully connected to the server.")
+
+
+    def disconnect(self):
+        """
+        Disconnect the user from the server (logout).
+        """
+        if not self.is_connected_to_server:
+            print(f"User {self.phone_number} is not connected to the server.")
+            return
+
+        # Simulate server disconnection logic
+        self.is_connected_to_server = False
+        print(f"User {self.phone_number} successfully disconnected from the server.")
+
+
+    def send_message_to(self, phone_number, message):
         """
         Send a message to another user by phone number.
 
         Args:
             phone_number (str): The phone number of the recipient.
+            message (str): The message to be sent.
         """
-        pass  # Implement the logic for sending a message
+        if not self.is_connected_to(phone_number):
+            print(f"Error: No connection found with {phone_number}.")
+            return
+
+        # Retrieve the shared secret (kdf_shared_secret) for the connection
+        kdf_shared_secret = self.connections[phone_number]
+
+        # Simulate sending a message using the shared secret
+        print(f"Sending message to {phone_number} using shared secret {kdf_shared_secret}: {message}")
+
 
     def show_waiting_messages(self):
         """Display all waiting messages."""
