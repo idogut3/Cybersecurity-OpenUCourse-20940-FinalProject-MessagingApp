@@ -9,7 +9,7 @@ class ProtocolsCodes(Enum):
     CheckWaitingMessagesProtocolCode = "This"
     ProcessCommunicateProtocolCode = "Project"
 
-def send_by_secure_channel(code):
+def send_by_secure_channel(code, email):
     return 2
 
 def generate_random_code():

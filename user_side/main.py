@@ -174,7 +174,7 @@ def decide_which_process_to_perform(chosen_number):
 
 # Example usage
 if __name__ == "__main__":
-    while(True):
+    while True:
         display_options()
         chosen_number = get_number_input()
         decide_which_process_to_perform(chosen_number)

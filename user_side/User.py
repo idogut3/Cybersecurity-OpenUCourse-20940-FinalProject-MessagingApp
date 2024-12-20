@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, version, public_key, private_key, phone_number):
+    def __init__(self, version, public_key, private_key, phone_number, email):
         """
         Initialize a User instance.
 
@@ -10,10 +10,11 @@ class User:
             phone_number (str): User's phone number.
         """
         self.version = version  # Application or protocol version
-        self.connections = {}  # Dictionary to store connections (phone_number -> kdf_shared_secret)
+        self.connections = dict()  # Dictionary to store connections (phone_number -> kdf_shared_secret)
         self.public_key = public_key  # User's public key
         self.private_key = private_key  # User's private key
         self.phone_number = phone_number  # User's phone number
+        self.email = email
         self.code = 0  # Initialized as 0, updated when registered
         self.is_connected_to_server = False  # Boolean to track server connection status
         self.waiting_messages = []  # List of messages waiting to be processed
@@ -47,7 +48,7 @@ class User:
             print("Error: The target phone number is invalid.")
 
 
-    def connect(self):
+    def connect_to_server(self):
         """
         Connect the user to the server (login).
         """
@@ -60,7 +61,7 @@ class User:
         print(f"User {self.phone_number} successfully connected to the server.")
 
 
-    def disconnect(self):
+    def disconnect_from_server(self):
         """
         Disconnect the user from the server (logout).
         """
@@ -100,3 +101,8 @@ class User:
             print("Waiting Messages:")
             for message in self.waiting_messages:
                 print(message)  # Assuming Message class has a suitable __str__ method
+
+    def clear_waiting_messages(self):
+        self.waiting_messages = []
+
+
