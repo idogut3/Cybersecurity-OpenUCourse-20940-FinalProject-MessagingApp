@@ -2,31 +2,8 @@ import socket
 import json
 from User import User
 from user_utils import *
-from validation_utils import *
+from validations import *
 from pycparser.c_ast import Switch
-
-
-def send_json(ip, port, data):
-    """
-    Sends JSON data to a specified IP and port.
-
-    Args:
-        ip (str): The IP address to send data to.
-        port (int): The port number to send data to.
-        data (dict): The JSON data to send.
-    """
-    # Convert the dictionary to a JSON string
-    json_data = json.dumps(data)
-
-    # Create a socket connection
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        client_socket.connect((ip, port))  # Connect to the server
-        client_socket.sendall(json_data.encode('utf-8'))  # Send JSON data
-
-        # Receive the server's response
-        response = client_socket.recv(1024).decode('utf-8')
-        print("Server response:", response)
-        return response
 
 
 def register_to_server(phone_number: str):
@@ -100,7 +77,7 @@ def connect_to_server():
             "secret_code": secret_code
         }
 
-        recived_data = send_json(server_ip, server_port, data_to_send)
+        recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send)
         if recived_data["code"] == "We":
             print("connection established!")
             user.is_connected_to_server = True
@@ -137,12 +114,10 @@ def display_options():
     print("4. Send message")
     print("5. Show waiting messages")
 
-def get_number_input():
+def get_validated_option_number():
     """
-    Prompts the user to input a number between 1 and 5.
-
-    Returns:
-        int: A valid number between 1 and 5.
+        After the options were displayed, returns the number the user chose,
+        :raises error if the option number is illegal
     """
     while True:
         try:
@@ -153,7 +128,8 @@ def get_number_input():
             if 1 <= number <= 5:
                 return number
             else:
-                print("Invalid input. Please enter a number between 1 and 5.")
+                print("\nInvalid input. Please enter a number between 1 and 5.")
+
         except ValueError:
             print("Invalid input. Please enter a valid number.")
 
@@ -171,12 +147,11 @@ def decide_which_process_to_perform(chosen_number):
         pass#todo
 
 
-
 # Example usage
 if __name__ == "__main__":
     while True:
         display_options()
-        chosen_number = get_number_input()
+        chosen_number = get_validated_option_number()
         decide_which_process_to_perform(chosen_number)
         data_to_send = {
             "name": "Alice",
@@ -184,4 +159,4 @@ if __name__ == "__main__":
             "email": "alice@example.com"
         }
 
-        send_json(server_ip, server_port, data_to_send)
+        send_json(SERVER_IP, SERVER_PORT, data_to_send)

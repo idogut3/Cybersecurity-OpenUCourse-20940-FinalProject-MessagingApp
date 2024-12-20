@@ -1,4 +1,5 @@
-import os
+import json
+import socket
 
 from cryptography.hazmat.primitives.asymmetric.ec import  EllipticCurvePublicKey, EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -9,41 +10,8 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 
-server_ip = "127.0.0.1"  # Server IP
-server_port = 5000  # Server port
-
-def generate_ecc_keys(private_key_file: str, public_key_file: str):
-    # Generate ECC private key
-    private_key = ec.generate_private_key(ec.SECP256R1())
-
-    # Get the associated public key
-    public_key = private_key.public_key()
-
-    # Serialize the private key to PEM format
-    private_key_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()  # No password protection
-    )
-
-    # Serialize the public key to PEM format
-    public_key_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-
-    # Save the private key to a file
-    with open(private_key_file, "wb") as private_file:
-        private_file.write(private_key_pem)
-
-    # Save the public key to a file
-    with open(public_key_file, "wb") as public_file:
-        public_file.write(public_key_pem)
-
-    return {
-        "public_key_pem": public_key_pem.decode("utf-8"),
-        "private_key_pem": private_key_pem.decode("utf-8")
-    }
+SERVER_IP = "127.0.0.1"  # Server IP
+SERVER_PORT = 5000  # Server port
 
 def load_private_key(private_key_file: str):
     """
@@ -79,21 +47,6 @@ def load_public_key(public_key_file: str):
             backend=default_backend()
         )
     return public_key
-
-
-def aes_encrypt(data: bytes) -> dict:
-    key = os.urandom(32)
-    iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-    encryptor = cipher.encryptor()
-    pad = padding.PKCS7(128).padder()
-    padded_message = pad.update(data) + pad.finalize()
-    ciphertext = encryptor.update(padded_message) + encryptor.finalize()
-    return {
-        "key": key,
-        "iv": iv,
-        "ciphertext": ciphertext
-    }
 
 
 def aes_decrypt(encrypted_data: dict) -> bytes:
@@ -139,52 +92,58 @@ def create_shared_secret(private_key: ec.EllipticCurvePrivateKey, peer_public_ke
     shared_secret = private_key.exchange(ec.ECDH(), peer_public_key)
     return shared_secret
 
-def do_kdf(shared_secret: bytes, salt: bytes) -> bytes:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=1000000,
-    )
-    return kdf.derive(shared_secret)
-
-def wrap_aes_key_with_derived_key(aes_key: bytes, derived_key: bytes) -> bytes:
-    cipher = Cipher(algorithms.AES(derived_key), modes.ECB())
-    encryptor = cipher.encryptor()
-    return encryptor.update(aes_key) + encryptor.finalize()
-
-def unwrap_aes_key_with_derived_key(aes_key: bytes, derived_key: bytes) -> bytes:
-    cipher = Cipher(algorithms.AES(derived_key), modes.ECB())
-    decryptor = cipher.decryptor()
-    return decryptor.update(aes_key) + decryptor.finalize()
 #"""
-if __name__ == "__main__":
-    # Original plaintext data
-    original_data = b"Sensitive information to encrypt!"
-    # Call the function to generate and save keys
-    generate_ecc_keys(private_key_file="private_key.pem", public_key_file="public_key.pem")
-    # Paths to the key files
-    private_key_path = "private_key.pem"
-    public_key_path = "public_key.pem"
 
-    # Load the private key
-    private_key = load_private_key(private_key_path)
-    print(f"Loaded Private Key: {private_key}")
+def send_json(ip, port, data):
+    """
+    Sends JSON data to a specified IP and port.
 
-    # Load the public key
-    public_key = load_public_key(public_key_path)
-    print(f"Loaded Public Key: {public_key}")
+    Args:
+        ip (str): The IP address to send data to.
+        port (int): The port number to send data to.
+        data (dict): The JSON data to send.
+    """
+    # Convert the dictionary to a JSON string
+    json_data = json.dumps(data)
 
-    # Encrypt the data
-    encrypted = aes_encrypt(original_data)
-    print("Encrypted Data:", encrypted)
+    # Create a socket connection
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect((ip, port))  # Connect to the server
+        client_socket.sendall(json_data.encode('utf-8'))  # Send JSON data
 
-    # Decrypt the data
-    decrypted = aes_decrypt(encrypted)
-    print("Decrypted Data:", decrypted)
+        # Receive the server's response
+        response = client_socket.recv(1024).decode('utf-8')
+        print("Server response:", response)
+        return response
 
-    # Verify the result
-    assert decrypted == original_data, "Decryption failed! Data does not match."
-    print("Decryption successful!")
 
-#"""
+# if __name__ == "__main__":
+#     # Original plaintext data
+#     original_data = b"Sensitive information to encrypt!"
+#     # Call the function to generate and save keys
+#     generate_ecc_keys(private_key_file="private_key.pem", public_key_file="public_key.pem")
+#     # Paths to the key files
+#     private_key_path = "private_key.pem"
+#     public_key_path = "public_key.pem"
+#
+#     # Load the private key
+#     private_key = load_private_key(private_key_path)
+#     print(f"Loaded Private Key: {private_key}")
+#
+#     # Load the public key
+#     public_key = load_public_key(public_key_path)
+#     print(f"Loaded Public Key: {public_key}")
+#
+#     # Encrypt the data
+#     encrypted = encrypt_with_aes(original_data)
+#     print("Encrypted Data:", encrypted)
+#
+#     # Decrypt the data
+#     decrypted = aes_decrypt(encrypted)
+#     print("Decrypted Data:", decrypted)
+#
+#     # Verify the result
+#     assert decrypted == original_data, "Decryption failed! Data does not match."
+#     print("Decryption successful!")
+#
+# #"""
