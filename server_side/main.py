@@ -3,7 +3,7 @@ import json
 import threading
 
 
-def handle_client(conn, addr):
+def handle_client(conn:socket.socket, addr):
     """
     Handles communication with a single client.
 
