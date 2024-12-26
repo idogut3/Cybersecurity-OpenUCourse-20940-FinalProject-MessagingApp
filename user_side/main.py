@@ -6,15 +6,32 @@ from validations import *
 from pycparser.c_ast import Switch
 
 
+
 def register_to_server(phone_number: str):
     """Register the user to the server."""
     # Implement the logic for server registration
+    data_to_send = {
+        "code": "We"
+    }
+
+    recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send) # the server should send a json with the same code and his public key.
+
+    response_dict = json.loads(recived_data)
+    # Access fields
+    print("code:", response_dict.get("code"))
+    print("public_key:", response_dict.get("public_key"))
+    if response_dict.get("code") != "We":
+        #there is a problem
+        return 1
+    #todo
+
     # At the end of the logic, if got register success, save phone number.
     try:
         save_phone_number(phone_number)
         user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
     except ValueError as e:
         print(f"Error: {e}")
+
 
 def save_phone_number(phone_number: str):
     """
@@ -72,7 +89,7 @@ def connect_to_server():
         print(f"Phone number read from file: {phone_number}")
         user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
         data_to_send = {
-            "code": "We",
+            "code": "Love",
             "phone_number": phone_number,
             "secret_code": secret_code
         }
@@ -114,6 +131,7 @@ def display_options():
     print("4. Send message")
     print("5. Show waiting messages")
 
+
 def get_validated_option_number():
     """
         After the options were displayed, returns the number the user chose,
@@ -140,11 +158,12 @@ def decide_which_process_to_perform(chosen_number):
     elif chosen_number == 2:
         connect_to_server()
     elif chosen_number == 3:
-        pass#todo
+        pass  # todo
     elif chosen_number == 4:
-        pass#todo
+        pass  # todo
     else:
-        pass#todo
+        pass  # todo
+
 
 
 # Example usage

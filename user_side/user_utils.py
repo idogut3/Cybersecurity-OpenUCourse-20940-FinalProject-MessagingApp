@@ -10,6 +10,9 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 
+from user_side.User import User
+from user_side.validations import validate_phone_number
+
 SERVER_IP = "127.0.0.1"  # Server IP
 SERVER_PORT = 5000  # Server port
 
@@ -115,6 +118,8 @@ def send_json(ip, port, data):
         response = client_socket.recv(1024).decode('utf-8')
         print("Server response:", response)
         return response
+
+
 
 
 # if __name__ == "__main__":
