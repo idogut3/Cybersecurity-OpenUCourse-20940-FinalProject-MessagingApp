@@ -1,4 +1,6 @@
 import os
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -200,3 +202,24 @@ def decrypt_message_with_aes_cbc_key(encrypted_message, aes_key, iv):
     decrypted_message = decrypted_message[:-pad_length]
 
     return decrypted_message
+
+
+def encrypt_message(message, public_key):
+    """
+    Encrypts a message using the RSA public key.
+    Args:
+        message (str): The message to encrypt.
+        public_key (rsa.RSAPublicKey): The RSA public key.
+    Returns:
+        bytes: The encrypted message.
+    """
+    message_bytes = message.encode('utf-8')
+    encrypted_message = public_key.encrypt(
+        message_bytes,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return encrypted_message

@@ -21,7 +21,8 @@ def handle_client(conn:socket.socket, addr):
             # Decode the received data
             json_data = json.loads(data.decode('utf-8'))
             print(f"Received JSON data from {addr}:", json_data)
-
+            #if json_data["code"] == "We":
+                #todo
             # Optional: Send a response back to the client
             response = json.dumps({"status": "success"}).encode('utf-8')
             conn.sendall(response)
