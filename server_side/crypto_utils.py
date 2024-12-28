@@ -80,6 +80,32 @@ def save_keys_to_files(private_key, public_key):
             )
         )
 
+def public_key_to_json(public_key):
+    """
+    Converts a public key to a JSON-serializable format.
+    Args:
+        public_key (rsa.RSAPublicKey): The public key to convert.
+    Returns:
+        str: The public key
+    """
+    public_key_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+    return public_key_pem
+
+def public_key_from_file(file_path):
+    """
+    Loads a public key from a PEM file.
+    Args:
+        file_path (str): Path to the PEM file.
+    Returns:
+        rsa.RSAPublicKey: The loaded public key.
+    """
+    with open(file_path, "rb") as public_file:
+        public_key = serialization.load_pem_public_key(public_file.read())
+    return public_key
+
 # Example usage:
 if __name__ == "__main__":
     # Generate keys

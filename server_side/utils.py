@@ -38,7 +38,7 @@ def send_json(ip, port, data):
         client_socket.connect((ip, port))  # Connect to the server
         client_socket.sendall(json_data.encode('utf-8'))  # Send JSON data
         response = client_socket.recv(1024).decode('utf-8')  # Receive the server's response
-        print("Server response:", response)
+        print("Client response:", response)
 
 
 #
