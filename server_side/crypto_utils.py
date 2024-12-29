@@ -94,6 +94,21 @@ def public_key_to_json(public_key):
     ).decode('utf-8')
     return public_key_pem
 
+def private_key_from_file(file_path):
+    """
+    Loads a private key from a PEM file.
+    Args:
+        file_path (str): Path to the PEM file.
+    Returns:
+        rsa.RSAPrivateKey: The loaded private key.
+    """
+    with open(file_path, "rb") as private_file:
+        private_key = serialization.load_pem_private_key(
+            private_file.read(),
+            password=None
+        )
+    return private_key
+
 def public_key_from_file(file_path):
     """
     Loads a public key from a PEM file.
@@ -119,9 +134,9 @@ if __name__ == "__main__":
     print(f"Original message: {original_message}")
 
     # Encrypt the message
-    encrypted = encrypt_message(original_message, public_key)
+    encrypted = encrypt_message(original_message, public_key_from_file("public_key.pem"))
     print(f"Encrypted message: {encrypted}")
 
     # Decrypt the message
-    decrypted = decrypt_message(encrypted, private_key)
+    decrypted = decrypt_message(encrypted, private_key_from_file("private_key.pem"))
     print(f"Decrypted message: {decrypted}")

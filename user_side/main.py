@@ -1,6 +1,7 @@
 import socket
 import json
 from User import User
+from user_side.CryptoUtils import encrypt_message
 from user_utils import *
 from validations import *
 from pycparser.c_ast import Switch
@@ -23,7 +24,14 @@ def register_to_server(phone_number: str):
     if response_dict.get("code") != "We":
         #there is a problem
         return 1
-    #todo
+    data_to_send = {
+        "code": "We",
+        "phone_number": encrypt_message(phone_number, response_dict.get("public_key"))
+    }
+
+    recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send) # the server should send a json with the same code and his public key.
+
+    response_dict = json.loads(recived_data)
 
     # At the end of the logic, if got register success, save phone number.
     try:

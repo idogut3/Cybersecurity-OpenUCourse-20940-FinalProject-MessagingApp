@@ -8,8 +8,8 @@ from server_side.database_utils import validate_phone_number
 from user_side.user_utils import load_public_key, load_private_key, SERVER_PORT, SERVER_IP
 
 
-#SERVER_IP = "127.0.0.1"  # Server IP TODO
-#SERVER_PORT = 5000  # Server port
+SERVER_IP = "127.0.0.1"  # Server IP
+SERVER_PORT = 5000  # Server port
 
 class ProtocolsCodes(Enum):
     RegisterRequestProtocolCode = "We"
@@ -21,8 +21,18 @@ def send_by_secure_channel(code, email):
     return 2
 
 def generate_random_code():
-    """Generate a random 6-digit code as a string, preserving leading zeros."""
-    return f"{random.randint(0, 999999):06}"
+    """
+    Generates a 6-digit random code by creating one digit at a time.
+
+    Returns:
+        str: A 6-digit random code as a string.
+    """
+    code = ""
+    for _ in range(6):
+        digit = random.randint(0, 9)  # Generate a random digit (0-9)
+        code += str(digit)  # Append the digit to the code as a string
+    return code
+
 
 def send_json(ip, port, data):
     """
