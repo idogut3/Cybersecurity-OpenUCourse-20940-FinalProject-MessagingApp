@@ -8,14 +8,16 @@ from server_side.crypto_utils import generate_rsa_keys, save_keys_to_files
 from server_side.utils import ProtocolsCodes
 
 DEFAULT_PORT = 1256
+
+
 class Server:
-    def __init__(self, host_ip:str, port:int = DEFAULT_PORT):
-            self.port = port
-            self.host_ip = host_ip
-            self.ADDR = (self.host_ip, self.port)
-            self.database = DataBase()
-            self.database_lock = threading.Lock()  # Lock for database access
-            self.version = 3
+    def __init__(self, host_ip: str, port: int = DEFAULT_PORT):
+        self.port = port
+        self.host_ip = host_ip
+        self.ADDR = (self.host_ip, self.port)
+        self.database = DataBase()
+        self.database_lock = threading.Lock()  # Lock for database access
+        self.version = 3
 
     def get_database(self) -> DataBase:
         with self.database_lock:  # Acquire lock for safe database access
@@ -25,20 +27,20 @@ class Server:
         return self.version
 
     # ---------------------------
-    # 4. A Factory Function to Get the Correct Protocol
+    # 4. A Factory Function to Get the Correct Protocol || todo: not sure if that could be called as a factory function but idk ~idogut3
     # ---------------------------
-    def get_protocol_by_code(code: str, conn: socket.socket, addr, database=None) -> Protocol:
+    def get_protocol(self, conn: socket.socket, code: str, request_json) -> Protocol:
         """
         Returns an instance of the appropriate protocol class based on the code.
         """
         if code == ProtocolsCodes.RegisterRequestProtocolCode.value:
-            return RegisterRequestProtocol(server=addr, conn=conn, database=database)
+            return RegisterRequestProtocol(server=self, conn=conn, request_json=request_json)
         elif code == ProtocolsCodes.ConnectRequestProtocolCode.value:
-            return ConnectRequestProtocol(server=addr, conn=conn, database=database)
+            return ConnectRequestProtocol(server=self, conn=conn, request_json=request_json)
         elif code == ProtocolsCodes.CheckWaitingMessagesProtocolCode.value:
-            return CheckWaitingMessagesProtocol(server=addr, conn=conn, database=database)
+            return CheckWaitingMessagesProtocol(server=self, conn=conn, request_json=request_json)
         elif code == ProtocolsCodes.ProcessCommunicateProtocolCode.value:
-            return ProcessCommunicateProtocol(server=addr, conn=conn, database=database)
+            return ProcessCommunicateProtocol(server=self, conn=conn, request_json=request_json)
         else:
             # You could raise an exception or return a "no-op" protocol here
             raise ValueError(f"Unknown protocol code: {code}")
@@ -66,14 +68,13 @@ class Server:
                 protocol_code = json_data.get("code")
                 if protocol_code:
                     try:
-                        protocol_instance = self.get_protocol_by_code(protocol_code, conn, client_addr)
-                        protocol_instance.json = json_data  # If you want to store the data
+                        protocol_instance = self.get_protocol(conn=conn, code=protocol_code, request_json=json_data)
                         # Execute the protocol logic
-                        protocol_instance.protocol()
+                        protocol_instance.run()
 
-                    except ValueError as e:
-                        print(f"Error: {e}")
-                        error_response = json.dumps({"status": "error", "message": str(e)}).encode('utf-8')
+                    except ValueError as error:
+                        print(f"Protocol instance run failed: {error}")
+                        error_response = json.dumps({"status": "error", "message": str(error)}).encode('utf-8')
                         conn.sendall(error_response)
                 else:
                     # If "code" is not provided, send an error or handle as needed
@@ -83,14 +84,14 @@ class Server:
                     }).encode('utf-8')
                     conn.sendall(error_response)
 
-        except Exception as e:
-            print(f"Error handling client {client_addr}: {e}")
+        except Exception as error:
+            print(f"Error handling client {client_addr}: {error}")
         finally:
             print(f"Connection closed with {client_addr}")
             conn.close()  # Close the connection
 
-    def handle_connection(self, conn):
-        pass
+    # def handle_connection(self, conn): todo: Not sure if this is needed or not yet ~ idogut3
+    #     pass
 
     def run(self):
         """
