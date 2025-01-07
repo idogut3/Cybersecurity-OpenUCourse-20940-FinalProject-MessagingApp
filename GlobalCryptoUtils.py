@@ -7,21 +7,21 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import Cipher, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import algorithms
-from cryptography.hazmat.primitives.asymmetric.ec import ECDH
+from cryptography.hazmat.primitives.asymmetric.ec import ECDH, EllipticCurvePublicKey, EllipticCurvePrivateKey
 from cryptography.hazmat.backends import default_backend
 
-def generate_ecc_keys() -> dict:
+
+def generate_ecc_keys() -> tuple[EllipticCurvePublicKey, EllipticCurvePrivateKey]:
     # Generate ECC private key
     private_key = ec.generate_private_key(ec.SECP256R1())
 
     # Get the associated public key
     public_key = private_key.public_key()
 
-    return {
-        "public_key": public_key, "private_key": private_key}
+    return public_key, private_key
 
 
-def serialize_private_ecc_key_to_pem_format(private_ecc_key):
+def serialize_private_ecc_key_to_pem_format(private_ecc_key:EllipticCurvePrivateKey):
     private_key_pem = private_ecc_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -31,7 +31,7 @@ def serialize_private_ecc_key_to_pem_format(private_ecc_key):
     return private_key_pem
 
 
-def serialize_public_ecc_key_to_pem_format(public_ecc_key):
+def serialize_public_ecc_key_to_pem_format(public_ecc_key:EllipticCurvePublicKey):
     public_key_pem = public_ecc_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
@@ -66,7 +66,7 @@ def generate_random_iv() -> bytes:
     return os.urandom(iv_size)
 
 
-def create_shared_secret(sender_public_key, receiver_private_key) -> bytes:
+def create_shared_secret(sender_public_key:EllipticCurvePublicKey, receiver_private_key:EllipticCurvePrivateKey) -> bytes:
     """
     Creates a shared secret using ECDH key exchange.
 
@@ -93,7 +93,7 @@ def kdf_wrapper(shared_secret: bytes, salt: bytes):
     return kdf.derive(shared_secret)
 
 
-def wrap_cbc_aes_key(aes_key, kdf_wrapped_shared_secret):
+def wrap_cbc_aes_key(aes_key:bytes, kdf_wrapped_shared_secret:bytes):
     """
         Encrypts (wraps) an AES key using AES-CBC with a KDF-wrapped shared secret.
 
@@ -121,7 +121,7 @@ def wrap_cbc_aes_key(aes_key, kdf_wrapped_shared_secret):
     return {"wrapped_aes_key": wrapped_aes_key, "iv:": iv}
 
 
-def unwrap_cbc_aes_key(wrapped_aes_key, kdf_wrapped_shared_secret, iv):
+def unwrap_cbc_aes_key(wrapped_aes_key:bytes, kdf_wrapped_shared_secret:bytes, iv:bytes):
     """
     Decrypts (unwraps) an AES key using AES-CBC with a KDF-wrapped shared secret an iv.
 
@@ -146,7 +146,8 @@ def unwrap_cbc_aes_key(wrapped_aes_key, kdf_wrapped_shared_secret, iv):
 
     return aes_key
 
-def encrypt_message_with_aes_cbc_key(message, aes_key, iv):
+
+def encrypt_message_with_aes_cbc_key(message, aes_key, iv): #TODO: MAKE THIS ENCRYPT A JSON FILE INSTEAD
     """
     Encrypts a message using AES-CBC.
 
@@ -175,7 +176,35 @@ def encrypt_message_with_aes_cbc_key(message, aes_key, iv):
 
     return encrypted_message
 
-def decrypt_message_with_aes_cbc_key(encrypted_message, aes_key, iv):
+
+# def aes_decrypt(encrypted_data: dict) -> bytes: # TODO: PROBABLY NOT NEEDED BUT I AM SAVING IT IN THE CODE JUST IN CASE ~idogut3
+#     """
+#     Decrypts the data encrypted by aes_encrypt.
+#
+#     Args:
+#         encrypted_data (dict): Dictionary containing the key, iv, and ciphertext.
+#
+#     Returns:
+#         bytes: The original plaintext data.
+#     """
+#     key = encrypted_data["key"]
+#     iv = encrypted_data["iv"]
+#     ciphertext = encrypted_data["ciphertext"]
+#
+#     # Create a Cipher object using the key and IV
+#     cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+#     decryptor = cipher.decryptor()
+#
+#     # Decrypt the ciphertext
+#     padded_message = decryptor.update(ciphertext) + decryptor.finalize()
+#
+#     # Remove the PKCS7 padding
+#     unpad = padding.PKCS7(128).unpadder()
+#     plaintext = unpad.update(padded_message) + unpad.finalize()
+#
+#     return plaintext
+
+def decrypt_message_with_aes_cbc_key(encrypted_message, aes_key, iv): #TODO: MAKE THIS DECRYPT TO A JSON FILE INSTEAD
     """
     Decrypts an encrypted message using AES-CBC.
 
@@ -202,24 +231,3 @@ def decrypt_message_with_aes_cbc_key(encrypted_message, aes_key, iv):
     decrypted_message = decrypted_message[:-pad_length]
 
     return decrypted_message
-
-
-def encrypt_message(message, public_key):
-    """
-    Encrypts a message using the RSA public key.
-    Args:
-        message (str): The message to encrypt.
-        public_key (rsa.RSAPublicKey): The RSA public key.
-    Returns:
-        bytes: The encrypted message.
-    """
-    message_bytes = message.encode('utf-8')
-    encrypted_message = public_key.encrypt(
-        message_bytes,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
-    return encrypted_message

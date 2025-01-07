@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import json
 
 from server_side.Server import Server
-from server_side.crypto_utils import public_key_from_file, decrypt_message, private_key_from_file
+from server_side.deprecated_currently import public_key_from_file, decrypt_message, private_key_from_file
 from server_side.database_utils import validate_phone_number
 from server_side.utils import SERVER_IP, SERVER_PORT, send_json, generate_random_code
 

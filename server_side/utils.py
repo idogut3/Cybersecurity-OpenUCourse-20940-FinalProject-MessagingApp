@@ -3,21 +3,13 @@ from enum import Enum
 import socket
 import json
 
-from server_side.User import User
-from server_side.database_utils import validate_phone_number
-from user_side.user_utils import load_public_key, load_private_key, SERVER_PORT, SERVER_IP
-
-
-SERVER_IP = "127.0.0.1"  # Server IP
-SERVER_PORT = 5000  # Server port
-
 class ProtocolsCodes(Enum):
     RegisterRequestProtocolCode = "We"
     ConnectRequestProtocolCode = "Love"
     CheckWaitingMessagesProtocolCode = "This"
     ProcessCommunicateProtocolCode = "Project"
 
-def send_by_secure_channel(code, email):
+def send_by_secure_channel(code, email): #todo
     return 2
 
 def generate_random_code():

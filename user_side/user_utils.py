@@ -1,20 +1,10 @@
 import json
 import socket
-
+import random
 from cryptography.hazmat.primitives.asymmetric.ec import  EllipticCurvePublicKey, EllipticCurvePrivateKey
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 
-from user_side.User import User
-from user_side.validations import validate_phone_number
-
-SERVER_IP = "127.0.0.1"  # Server IP
-SERVER_PORT = 5000  # Server port
 
 def load_private_key(private_key_file: str):
     """
@@ -51,52 +41,6 @@ def load_public_key(public_key_file: str):
         )
     return public_key
 
-
-def aes_decrypt(encrypted_data: dict) -> bytes:
-    """
-    Decrypts the data encrypted by aes_encrypt.
-
-    Args:
-        encrypted_data (dict): Dictionary containing the key, iv, and ciphertext.
-
-    Returns:
-        bytes: The original plaintext data.
-    """
-    key = encrypted_data["key"]
-    iv = encrypted_data["iv"]
-    ciphertext = encrypted_data["ciphertext"]
-
-    # Create a Cipher object using the key and IV
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-    decryptor = cipher.decryptor()
-
-    # Decrypt the ciphertext
-    padded_message = decryptor.update(ciphertext) + decryptor.finalize()
-
-    # Remove the PKCS7 padding
-    unpad = padding.PKCS7(128).unpadder()
-    plaintext = unpad.update(padded_message) + unpad.finalize()
-
-    return plaintext
-
-
-def create_shared_secret(private_key: ec.EllipticCurvePrivateKey, peer_public_key: ec.EllipticCurvePublicKey) -> bytes:
-    """
-    Generate a shared secret using ECDH (Elliptic Curve Diffie-Hellman).
-
-    Args:
-        private_key (EllipticCurvePrivateKey): The user's private key.
-        peer_public_key (EllipticCurvePublicKey): The peer's public key.
-
-    Returns:
-        bytes: The derived shared secret.
-    """
-    # Generate the shared secret
-    shared_secret = private_key.exchange(ec.ECDH(), peer_public_key)
-    return shared_secret
-
-#"""
-
 def send_json(ip, port, data):
     """
     Sends JSON data to a specified IP and port.
@@ -120,35 +64,16 @@ def send_json(ip, port, data):
         return response
 
 
+def generate_random_code():
+    """
+    Generates a 6-digit random code by creating one digit at a time.
 
+    Returns:
+        str: A 6-digit random code as a string.
+    """
+    code = ""
+    for _ in range(6):
+        digit = random.randint(0, 9)  # Generate a random digit (0-9)
+        code += str(digit)  # Append the digit to the code as a string
+    return code
 
-# if __name__ == "__main__":
-#     # Original plaintext data
-#     original_data = b"Sensitive information to encrypt!"
-#     # Call the function to generate and save keys
-#     generate_ecc_keys(private_key_file="private_key.pem", public_key_file="public_key.pem")
-#     # Paths to the key files
-#     private_key_path = "private_key.pem"
-#     public_key_path = "public_key.pem"
-#
-#     # Load the private key
-#     private_key = load_private_key(private_key_path)
-#     print(f"Loaded Private Key: {private_key}")
-#
-#     # Load the public key
-#     public_key = load_public_key(public_key_path)
-#     print(f"Loaded Public Key: {public_key}")
-#
-#     # Encrypt the data
-#     encrypted = encrypt_with_aes(original_data)
-#     print("Encrypted Data:", encrypted)
-#
-#     # Decrypt the data
-#     decrypted = aes_decrypt(encrypted)
-#     print("Decrypted Data:", decrypted)
-#
-#     # Verify the result
-#     assert decrypted == original_data, "Decryption failed! Data does not match."
-#     print("Decryption successful!")
-#
-# #"""

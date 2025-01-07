@@ -2,9 +2,9 @@ import json
 import socket
 import threading
 from DataBase import DataBase
+from GlobalCryptoUtils import generate_ecc_keys
 from server_side.Protocols import RegisterRequestProtocol, CheckWaitingMessagesProtocol, ProcessCommunicateProtocol, \
     ConnectRequestProtocol, Protocol
-from server_side.crypto_utils import generate_rsa_keys, save_keys_to_files
 from server_side.utils import ProtocolsCodes
 
 DEFAULT_PORT = 1256
@@ -103,7 +103,7 @@ class Server:
             server_socket.listen()  # Listen for incoming connections
             print(f"Server is listening on {self.host_ip}:{self.port}...")
             # Generate keys
-            private_key, public_key = generate_rsa_keys()
+            private_key, public_key = generate_ecc_keys()
 
             # Save keys to files
             save_keys_to_files(private_key, public_key)

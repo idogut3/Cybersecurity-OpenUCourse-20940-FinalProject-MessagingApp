@@ -1,92 +1,45 @@
 import socket
 import json
+
+from GlobalConstants import SERVER_IP, SERVER_PORT
 from User import User
-from user_side.CryptoUtils import encrypt_message
 from user_utils import *
 from validations import *
 from pycparser.c_ast import Switch
 
 
 
-def register_to_server(phone_number: str):
-    """Register the user to the server."""
-    # Implement the logic for server registration
-    data_to_send = {
-        "code": "We"
-    }
-
-    recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send) # the server should send a json with the same code and his public key.
-
-    response_dict = json.loads(recived_data)
-    # Access fields
-    print("code:", response_dict.get("code"))
-    print("public_key:", response_dict.get("public_key"))
-    if response_dict.get("code") != "We":
-        #there is a problem
-        return 1
-    data_to_send = {
-        "code": "We",
-        "phone_number": encrypt_message(phone_number, response_dict.get("public_key"))
-    }
-
-    recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send) # the server should send a json with the same code and his public key.
-
-    response_dict = json.loads(recived_data)
-
-    # At the end of the logic, if got register success, save phone number.
-    try:
-        save_phone_number(phone_number)
-        user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
-    except ValueError as e:
-        print(f"Error: {e}")
-
-
-def save_phone_number(phone_number: str):
-    """
-    Validate a phone number and save it to a default file.
-
-    Args:
-        phone_number (str): The phone number to save.
-
-    Raises:
-        ValueError: If the phone number is invalid.
-    """
-    # Validate the phone number (basic validation: digits only and length check)
-    if not validate_phone_number(phone_number):
-        raise ValueError("Invalid phone number. Must contain only digits and be 10-15 digits long.")
-
-    # Default file path to save the phone number
-    file_path = "phone_number.txt"
-
-    # Save the phone number to the specified file
-    with open(file_path, "w") as file:
-        file.write(phone_number)
-
-    print(f"Phone number {phone_number} has been saved to {file_path}.")
-
-
-def read_phone_number() -> str:
-    """
-    Read the phone number from the default file.
-
-    Returns:
-        str: The phone number from the file.
-
-    Raises:
-        FileNotFoundError: If the file does not exist.
-        ValueError: If the file is empty or contains invalid content.
-    """
-    # Default file path to read the phone number
-    file_path = "phone_number.txt"
-
-    # Read the phone number from the file
-    try:
-        with open(file_path, "r") as file:
-            phone_number = file.read().strip()
-        return phone_number
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File {file_path} does not exist, user did not register.")
+# def register_to_server(phone_number: str): # TODO: NOT SUPPOSED TO BE HERE
+#     """Register the user to the server."""
+#     # Implement the logic for server registration
+#     data_to_send = {
+#         "code": "We"
+#     }
+#
+#     recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send) # the server should send a json with the same code and his public key.
+#
+#     response_dict = json.loads(recived_data)
+#     # Access fields
+#     print("code:", response_dict.get("code"))
+#     print("public_key:", response_dict.get("public_key"))
+#     if response_dict.get("code") != "We":
+#         #there is a problem
+#         return 1
+#     data_to_send = {
+#         "code": "We",
+#         "phone_number": encrypt_message(phone_number, response_dict.get("public_key"))
+#     }
+#
+#     recived_data = send_json(SERVER_IP, SERVER_PORT, data_to_send) # the server should send a json with the same code and his public key.
+#
+#     response_dict = json.loads(recived_data)
+#
+#     # At the end of the logic, if got register success, save phone number.
+#     try:
+#         save_phone_number(phone_number)
+#         user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
+#     except ValueError as e:
+#         print(f"Error: {e}")
 
 
 def connect_to_server():
