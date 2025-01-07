@@ -1,25 +1,18 @@
+import json
 import socket
 import threading
-
 from DataBase import DataBase
+from server_side.Protocols import RegisterRequestProtocol, CheckWaitingMessagesProtocol, ProcessCommunicateProtocol, \
+    ConnectRequestProtocol, Protocol
+from server_side.crypto_utils import generate_rsa_keys, save_keys_to_files
+from server_side.utils import ProtocolsCodes
 
-
+DEFAULT_PORT = 1256
 class Server:
-    def __init__(self, host):
-        DEFAULT_PORT = int("1256")
-        port = DEFAULT_PORT
-        try:
-            port_info_file = open("port.info", "r")
-            # assuming the port_info_file is correct in its form
-            port = int(port_info_file.read())
-        except OSError as error:
-            print("Error: Error accessing port.info file")
-            print(error)
-            print("using default port: ", DEFAULT_PORT)
-        finally:
+    def __init__(self, host_ip:str, port:int = DEFAULT_PORT):
             self.port = port
-            self.host = host
-            self.ADDR = (self.host, self.port)
+            self.host_ip = host_ip
+            self.ADDR = (self.host_ip, self.port)
             self.database = DataBase()
             self.database_lock = threading.Lock()  # Lock for database access
             self.version = 3
@@ -31,25 +24,92 @@ class Server:
     def get_version(self):
         return self.version
 
-    def check_existing_database(self):  # Question 3
-        pass
+    # ---------------------------
+    # 4. A Factory Function to Get the Correct Protocol
+    # ---------------------------
+    def get_protocol_by_code(code: str, conn: socket.socket, addr, database=None) -> Protocol:
+        """
+        Returns an instance of the appropriate protocol class based on the code.
+        """
+        if code == ProtocolsCodes.RegisterRequestProtocolCode.value:
+            return RegisterRequestProtocol(server=addr, conn=conn, database=database)
+        elif code == ProtocolsCodes.ConnectRequestProtocolCode.value:
+            return ConnectRequestProtocol(server=addr, conn=conn, database=database)
+        elif code == ProtocolsCodes.CheckWaitingMessagesProtocolCode.value:
+            return CheckWaitingMessagesProtocol(server=addr, conn=conn, database=database)
+        elif code == ProtocolsCodes.ProcessCommunicateProtocolCode.value:
+            return ProcessCommunicateProtocol(server=addr, conn=conn, database=database)
+        else:
+            # You could raise an exception or return a "no-op" protocol here
+            raise ValueError(f"Unknown protocol code: {code}")
 
-    def handle_client(self, conn, addr):
-        print("Connected by:", addr)
+    def handle_client(self, conn: socket.socket, client_addr):
+        """
+        Handles communication with a single client.
+
+        Args:
+            conn (socket): The socket connection object.
+            client_addr (tuple): The address of the connected client.
+        """
+        print(f"Connection established with {client_addr}")
         try:
-            self.handle_connection(conn)
+            while True:
+                data = conn.recv(1024)  # Receive data (buffer size: 1024 bytes)
+                if not data:
+                    break  # Connection closed by the client
+
+                # Decode the received data
+                json_data = json.loads(data.decode('utf-8'))
+                print(f"Received JSON data from {client_addr}:", json_data)
+
+                # Extract the "code" from the JSON, then create and execute the correct protocol
+                protocol_code = json_data.get("code")
+                if protocol_code:
+                    try:
+                        protocol_instance = self.get_protocol_by_code(protocol_code, conn, client_addr)
+                        protocol_instance.json = json_data  # If you want to store the data
+                        # Execute the protocol logic
+                        protocol_instance.protocol()
+
+                    except ValueError as e:
+                        print(f"Error: {e}")
+                        error_response = json.dumps({"status": "error", "message": str(e)}).encode('utf-8')
+                        conn.sendall(error_response)
+                else:
+                    # If "code" is not provided, send an error or handle as needed
+                    error_response = json.dumps({
+                        "status": "error",
+                        "message": "No code provided in JSON data"
+                    }).encode('utf-8')
+                    conn.sendall(error_response)
+
+        except Exception as e:
+            print(f"Error handling client {client_addr}: {e}")
         finally:
-            conn.close()  # Ensure the connection is closed properly
+            print(f"Connection closed with {client_addr}")
+            conn.close()  # Close the connection
 
     def handle_connection(self, conn):
         pass
 
     def run(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(self.ADDR)
-            s.listen()
-            print(f"Server listening on {self.ADDR}")
-            while True:
-                conn, addr = s.accept()
+        """
+        Starts a persistent multithreaded server that listens for JSON data.
+        """
+        # Create a socket to listen for incoming connections
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.bind((self.host_ip, self.port))  # Bind to the specified IP and port
+            server_socket.listen()  # Listen for incoming connections
+            print(f"Server is listening on {self.host_ip}:{self.port}...")
+            # Generate keys
+            private_key, public_key = generate_rsa_keys()
+
+            # Save keys to files
+            save_keys_to_files(private_key, public_key)
+
+            while True:  # Keep the server running
+                conn, addr = server_socket.accept()  # Accept a connection
+                # Start a new thread to handle the client
                 client_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
                 client_thread.start()
+                print(f"Started thread {client_thread.name} to handle client {addr}")
