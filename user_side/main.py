@@ -1,14 +1,3 @@
-import socket
-import json
-
-from GlobalConstants import SERVER_IP, SERVER_PORT
-from User import User
-from user_side.menu import display_options, get_validated_option_number, decide_which_process_to_perform
-from user_utils import *
-from pycparser.c_ast import Switch
-
-
-
 # def register_to_server(phone_number: str): # TODO: NOT SUPPOSED TO BE HERE
 #     """Register the user to the server."""
 #     # Implement the logic for server registration
@@ -40,6 +29,7 @@ from pycparser.c_ast import Switch
 #         user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
 #     except ValueError as e:
 #         print(f"Error: {e}")
+from user_side.menu import display_options, get_validated_option_number
 
 # Example usage
 if __name__ == "__main__":

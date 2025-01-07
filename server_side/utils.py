@@ -26,23 +26,6 @@ def generate_random_code():
     return code
 
 
-def send_json(ip, port, data):
-    """
-    Sends JSON data to a specified IP and port.
-
-    Args:
-        ip (str): The IP address to send data to.
-        port (int): The port number to send data to.
-        data (dict): The JSON data to send.
-    """
-    json_data = json.dumps(data)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        client_socket.connect((ip, port))  # Connect to the server
-        client_socket.sendall(json_data.encode('utf-8'))  # Send JSON data
-        response = client_socket.recv(1024).decode('utf-8')  # Receive the server's response
-        print("Client response:", response)
-
-
 #
 # def register_to_server(phone_number: str):
 #     """Register the user to the server."""

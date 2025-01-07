@@ -1,4 +1,8 @@
+from GlobalConstants import SERVER_IP, SERVER_PORT
+from GlobalUtils import send_json
 from GlobalValidations import validate_phone_number
+from user_side.User import User
+from user_side.user_utils import load_public_key, load_private_key
 
 
 def save_phone_number(phone_number: str):
@@ -121,9 +125,11 @@ def get_validated_option_number():
 
 def decide_which_process_to_perform(chosen_number):
     if chosen_number == 1:
-        register_to_server()
+        pass # todo
+        # register_to_server()
     elif chosen_number == 2:
-        connect_to_server()
+        pass # todo
+        # connect_to_server()
     elif chosen_number == 3:
         pass  # todo
     elif chosen_number == 4:
