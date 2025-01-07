@@ -1,6 +1,5 @@
 from User import User
 
-
 class DataBase:
     def __init__(self):
         self.users = {}  # Dictionary to store users, keyed by phone_number
