@@ -1,24 +1,71 @@
 import json
 import socket
 
-def send_json(ip, port, data): #TODO: PROBABLY WRONG NEED TO FIX ~idogut3
+def send_dict_as_json_through_established_socket_connection(conn: socket.socket, data: dict) -> None:
     """
-    Sends JSON data to a specified IP and port.
+    Sends a dictionary to a socket connection in JSON format.
 
     Args:
-        ip (str): The IP address to send data to.
-        port (int): The port number to send data to.
-        data (dict): The JSON data to send.
+        conn (socket.socket): The socket connection to send data to.
+        data (dict): The dictionary to send.
+
+    Raises:
+        ValueError: If the data cannot be serialized to JSON.
+        socket.error: If there's an error sending data through the socket.
     """
-    # Convert the dictionary to a JSON string
-    json_data = json.dumps(data)
+    try:
+        # Serialize the dictionary to a JSON string
+        json_data = json.dumps(data)
 
-    # Create a socket connection
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-        client_socket.connect((ip, port))  # Connect to the server
-        client_socket.sendall(json_data.encode('utf-8'))  # Send JSON data
+        # Encode the JSON string into bytes
+        encoded_data = json_data.encode('utf-8')
 
-        # Receive the server's response
-        response = client_socket.recv(1024).decode('utf-8')
-        print("Server response:", response)
-        return response
+        # Send the length of the data first (fixed 4 bytes, big-endian)
+        conn.sendall(len(encoded_data).to_bytes(4, 'big'))
+
+        # Send the actual JSON data
+        conn.sendall(encoded_data)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise ValueError(f"Failed to serialize dictionary to JSON: {e}")
+    except socket.error as e:
+        raise socket.error(f"Socket error occurred: {e}")
+
+
+def receive_json_as_dict_through_established_connection(conn: socket.socket) -> dict:
+    """
+    Receives JSON data from a socket connection and converts it into a dictionary.
+
+    Args:
+        conn (socket.socket): The socket connection to receive data from.
+
+    Returns:
+        dict: The received JSON data as a dictionary.
+
+    Raises:
+        ValueError: If the received data is not valid JSON.
+        socket.error: If there's an error receiving data through the socket.
+    """
+    try:
+        # First, read the 4-byte length prefix
+        length_prefix = conn.recv(4)
+        if len(length_prefix) < 4:
+            raise socket.error("Incomplete length prefix received")
+
+        # Convert the length prefix from bytes to an integer
+        data_length = int.from_bytes(length_prefix, 'big')
+
+        # Read the actual data in chunks until the specified length is received
+        received_data = b""
+        while len(received_data) < data_length:
+            chunk = conn.recv(data_length - len(received_data))
+            if not chunk:
+                raise socket.error("Connection closed before receiving all data")
+            received_data += chunk
+
+        # Decode the received bytes into a JSON string and parse it into a dictionary
+        json_data = received_data.decode('utf-8')
+        return json.loads(json_data)
+    except (json.JSONDecodeError, ValueError) as e:
+        raise ValueError(f"Failed to deserialize received data into JSON: {e}")
+    except socket.error as e:
+        raise socket.error(f"Socket error occurred: {e}")

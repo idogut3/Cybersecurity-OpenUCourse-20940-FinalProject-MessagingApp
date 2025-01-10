@@ -1,6 +1,8 @@
 import socket
 from abc import ABC, abstractmethod
 import json
+from math import expm1
+
 from server_side.Server import Server
 
 class Protocol(ABC):
@@ -14,31 +16,38 @@ class Protocol(ABC):
     def run(self):
         """The abstract method for running a protocol"""
         pass
+    def send_general_server_error(self):
+        message =
+        self.conn.sendall(message)
+
 
 class RegisterRequestProtocol(Protocol):
     def run(self):
-        pass
-    #     """Implementation of the protocol method."""
-    #     print("Executing RegisterRequestProtocol protocol.")
-    #     response_dict = self.process_send_public_key_to_user()
-    #     if response_dict.get("code") != "We":
-    #         return 1
-    #     phone_number = decrypt_message(response_dict.get("phone_number"), private_key_from_file("private_key.pem"))
-    #     if not validate_phone_number(phone_number):
-    #         return 1
-    #     random_code = generate_random_code()
-    #     self.process_register_request()
-    #
-    # def process_send_public_key_to_user(self):
-    #     data_to_send = {
-    #         "code": "We",
-    #         "public_key": public_key_from_file("public_key.pem")
-    #     }
-    #
-    #     recived_data = send_json(SERVER_IP, SERVER_PORT,
-    #                              data_to_send)  # the server should send a json with the same code and his public key.
-    #
-    #     return json.loads(recived_data)
+        print("Executing RegisterRequestProtocol protocol")
+        try:
+            self.send_public_key_to_user()
+        except OSError as error:
+            print(f"Failed to send public key to user, error {error}")
+
+        # if response_dict.get("code") != "We":
+        #     return 1
+        # phone_number = decrypt_message(response_dict.get("phone_number"), private_key_from_file("private_key.pem"))
+        # if not validate_phone_number(phone_number):
+        #     return 1
+        # random_code = generate_random_code()
+        # self.process_register_request()
+
+    def send_public_key_to_user(self):
+        server_public_key =  self.server.ecc_keys[0]
+        data_to_send = {
+            "code": "We",
+            "public_key": server_public_key
+        }
+
+        recived_data = send_json(SERVER_IP, SERVER_PORT,
+                                 data_to_send)  # the server should send a json with the same code and his public key.
+
+        return json.loads(recived_data)
 
     def process_register_request(self):
         """Process the register request logic."""

@@ -9,6 +9,11 @@ class ProtocolsCodes(Enum):
     CheckWaitingMessagesProtocolCode = "This"
     ProcessCommunicateProtocolCode = "Project"
 
+class SubProtocolsCodes(Enum):
+    GENERAL_SERVER_ERROR = 100
+
+
+
 def send_by_secure_channel(code, email): #todo
     return 2
 

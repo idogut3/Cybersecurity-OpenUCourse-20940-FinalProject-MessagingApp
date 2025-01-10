@@ -18,6 +18,7 @@ class Server:
         self.database = DataBase()
         self.database_lock = threading.Lock()  # Lock for database access
         self.version = 3
+        self.ecc_keys = [] # Placeholder for future ecc keys [public_key , private_key]
 
     def get_database(self) -> DataBase:
         with self.database_lock:  # Acquire lock for safe database access
@@ -97,20 +98,25 @@ class Server:
         """
         Starts a persistent multithreaded server that listens for JSON data.
         """
-        # Create a socket to listen for incoming connections
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-            server_socket.bind((self.host_ip, self.port))  # Bind to the specified IP and port
-            server_socket.listen()  # Listen for incoming connections
-            print(f"Server is listening on {self.host_ip}:{self.port}...")
-            # Generate keys
-            private_key, public_key = generate_ecc_keys()
+        try:
+            # Create a socket to listen for incoming connections
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+                server_socket.bind((self.host_ip, self.port))  # Bind to the specified IP and port
+                server_socket.listen()  # Listen for incoming connections
+                print(f"Server is listening on {self.host_ip}:{self.port}...")
+                # Generate keys
+                public_key, private_key = generate_ecc_keys()
+                self.ecc_keys.append(public_key)
+                self.ecc_keys.append(private_key)
 
-            # Save keys to files
-            save_keys_to_files(private_key, public_key)
+                # Save keys to files
+                # save_keys_to_files(private_key, public_key) todo:maybe later
 
-            while True:  # Keep the server running
-                conn, addr = server_socket.accept()  # Accept a connection
-                # Start a new thread to handle the client
-                client_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
-                client_thread.start()
-                print(f"Started thread {client_thread.name} to handle client {addr}")
+                while True:  # Keep the server running
+                    conn, addr = server_socket.accept()  # Accept a connection
+                    # Start a new thread to handle the client
+                    client_thread = threading.Thread(target=self.handle_client, args=(conn, addr))
+                    client_thread.start()
+                    print(f"Started thread {client_thread.name} to handle client {addr}")
+        except OSError as error:
+            print(f"Error in server run:\n{error}")
