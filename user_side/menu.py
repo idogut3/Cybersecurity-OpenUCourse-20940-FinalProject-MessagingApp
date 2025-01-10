@@ -1,5 +1,5 @@
-from GlobalConstants import SERVER_IP, SERVER_PORT
-from GlobalUtils import send_json_to_ip
+from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
+from CommunicationUtils import send_json_to_ip
 from GlobalValidations import validate_phone_number
 from user_side.User import User
 from user_side.user_utils import load_public_key, load_private_key
@@ -65,7 +65,7 @@ def connect_to_server():
             "secret_code": secret_code
         }
 
-        recived_data = send_json_to_ip(SERVER_IP, SERVER_PORT, data_to_send)
+        recived_data = send_json_to_ip(SERVER_IP, SERVER_DEFUALT_PORT, data_to_send)
         if recived_data["code"] == "We":
             print("connection established!")
             user.is_connected_to_server = True

@@ -1,6 +1,9 @@
 import json
 import socket
 
+from CommunicationConstants import JSON_LENGTH_PREFIX, JSON_ENDIAN_BYTE_ORDER
+
+
 def send_dict_as_json_through_established_socket_connection(conn: socket.socket, data: dict) -> None:
     """
     Sends a dictionary to a socket connection in JSON format.
@@ -21,7 +24,7 @@ def send_dict_as_json_through_established_socket_connection(conn: socket.socket,
         encoded_data = json_data.encode('utf-8')
 
         # Send the length of the data first (fixed 4 bytes, big-endian)
-        conn.sendall(len(encoded_data).to_bytes(4, 'big'))
+        conn.sendall(len(encoded_data).to_bytes(JSON_LENGTH_PREFIX, JSON_ENDIAN_BYTE_ORDER))
 
         # Send the actual JSON data
         conn.sendall(encoded_data)
@@ -47,12 +50,12 @@ def receive_json_as_dict_through_established_connection(conn: socket.socket) -> 
     """
     try:
         # First, read the 4-byte length prefix
-        length_prefix = conn.recv(4)
-        if len(length_prefix) < 4:
+        length_prefix = conn.recv(JSON_LENGTH_PREFIX)
+        if len(length_prefix) < JSON_LENGTH_PREFIX:
             raise socket.error("Incomplete length prefix received")
 
         # Convert the length prefix from bytes to an integer
-        data_length = int.from_bytes(length_prefix, 'big')
+        data_length = int.from_bytes(length_prefix, JSON_ENDIAN_BYTE_ORDER)
 
         # Read the actual data in chunks until the specified length is received
         received_data = b""

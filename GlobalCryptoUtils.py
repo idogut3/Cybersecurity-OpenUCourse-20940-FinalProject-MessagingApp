@@ -1,15 +1,11 @@
 import os
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import Cipher, modes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives.asymmetric.ec import ECDH, EllipticCurvePublicKey, EllipticCurvePrivateKey
 from cryptography.hazmat.backends import default_backend
-
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 def generate_ecc_keys() -> tuple[EllipticCurvePublicKey, EllipticCurvePrivateKey]:
     # Generate ECC private key
@@ -19,25 +15,6 @@ def generate_ecc_keys() -> tuple[EllipticCurvePublicKey, EllipticCurvePrivateKey
     public_key = private_key.public_key()
 
     return public_key, private_key
-
-
-def serialize_private_ecc_key_to_pem_format(private_ecc_key:EllipticCurvePrivateKey):
-    private_key_pem = private_ecc_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()  # No password protection
-    )
-
-    return private_key_pem
-
-
-def serialize_public_ecc_key_to_pem_format(public_ecc_key:EllipticCurvePublicKey):
-    public_key_pem = public_ecc_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    return public_key_pem
-
 
 def generate_aes_key(key_size=32) -> bytes:
     """

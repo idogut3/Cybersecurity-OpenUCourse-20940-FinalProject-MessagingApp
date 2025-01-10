@@ -1,24 +1,25 @@
 import json
 import socket
 import threading
+
+from CommunicationCodes import ProcessCodes
+from CommunicationConstants import SERVER_DEFUALT_PORT
 from DataBase import DataBase
 from GlobalCryptoUtils import generate_ecc_keys
+from KeyLoaders import save_keys_to_files, load_public_key_from_file
 from server_side.Protocols import RegisterRequestProtocol, CheckWaitingMessagesProtocol, ProcessCommunicateProtocol, \
     ConnectRequestProtocol, Protocol
-from server_side.utils import ProtocolsCodes
-
-DEFAULT_PORT = 1256
 
 
 class Server:
-    def __init__(self, host_ip: str, port: int = DEFAULT_PORT):
+    def __init__(self, host_ip: str, port: int = SERVER_DEFUALT_PORT):
         self.port = port
         self.host_ip = host_ip
         self.ADDR = (self.host_ip, self.port)
         self.database = DataBase()
         self.database_lock = threading.Lock()  # Lock for database access
         self.version = 3
-        self.ecc_keys = [] # Placeholder for future ecc keys [public_key , private_key]
+        self.ECC_KEYS_FILE_PATH = 'Cybersecurity-OpenUCourse-20940-FinalProject-MessagingApp\\server_side\\SERVER_ECC_KEYS'
 
     def get_database(self) -> DataBase:
         with self.database_lock:  # Acquire lock for safe database access
@@ -27,6 +28,20 @@ class Server:
     def get_version(self):
         return self.version
 
+    def get_public_key(self):
+        file_path = self.ECC_KEYS_FILE_PATH + "\\" + "public_key.pem"
+        try:
+            return load_public_key_from_file(file_path)
+        except KeyError as error:
+            raise KeyError(f"Failed to get public key, error {error}")
+
+    def get_private_key(self):
+        file_path = self.ECC_KEYS_FILE_PATH + "\\" + "private_key.pem"
+        try:
+            return load_public_key_from_file(file_path)
+        except KeyError as error:
+            raise KeyError(f"Failed to get private key, error {error}")
+
     # ---------------------------
     # 4. A Factory Function to Get the Correct Protocol || todo: not sure if that could be called as a factory function but idk ~idogut3
     # ---------------------------
@@ -34,14 +49,14 @@ class Server:
         """
         Returns an instance of the appropriate protocol class based on the code.
         """
-        if code == ProtocolsCodes.RegisterRequestProtocolCode.value:
-            return RegisterRequestProtocol(server=self, conn=conn, request_json=request_json)
-        elif code == ProtocolsCodes.ConnectRequestProtocolCode.value:
-            return ConnectRequestProtocol(server=self, conn=conn, request_json=request_json)
-        elif code == ProtocolsCodes.CheckWaitingMessagesProtocolCode.value:
-            return CheckWaitingMessagesProtocol(server=self, conn=conn, request_json=request_json)
-        elif code == ProtocolsCodes.ProcessCommunicateProtocolCode.value:
-            return ProcessCommunicateProtocol(server=self, conn=conn, request_json=request_json)
+        if code == ProcessCodes.init_RegistrationCode.value:
+            return RegisterRequestProtocol(server=self, conn=conn, request_dict=request_json)
+        elif code == ProcessCodes.init_ConnectionCode.value:
+            return ConnectRequestProtocol(server=self, conn=conn, request_dict=request_json)
+        elif code == ProcessCodes.init_CheckWaitingMessagesCode.value:
+            return CheckWaitingMessagesProtocol(server=self, conn=conn, request_dict=request_json)
+        elif code == ProcessCodes.initCommunicationCode.value:
+            return ProcessCommunicateProtocol(server=self, conn=conn, request_dict=request_json)
         else:
             # You could raise an exception or return a "no-op" protocol here
             raise ValueError(f"Unknown protocol code: {code}")
@@ -106,11 +121,12 @@ class Server:
                 print(f"Server is listening on {self.host_ip}:{self.port}...")
                 # Generate keys
                 public_key, private_key = generate_ecc_keys()
-                self.ecc_keys.append(public_key)
-                self.ecc_keys.append(private_key)
 
                 # Save keys to files
-                # save_keys_to_files(private_key, public_key) todo:maybe later
+                save_keys_to_files(ecc_keys_file_path=self.ECC_KEYS_FILE_PATH,
+                                   public_key=public_key,
+                                   private_key=private_key
+                                   )
 
                 while True:  # Keep the server running
                     conn, addr = server_socket.accept()  # Accept a connection

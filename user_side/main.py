@@ -29,8 +29,8 @@
 #         user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
 #     except ValueError as e:
 #         print(f"Error: {e}")
-from GlobalConstants import SERVER_PORT, SERVER_IP
-from GlobalUtils import send_json_to_ip
+from CommunicationConstants import SERVER_DEFUALT_PORT, SERVER_IP
+from CommunicationUtils import send_json_to_ip
 from user_side.menu import display_options, get_validated_option_number, decide_which_process_to_perform
 
 # Example usage
@@ -45,4 +45,4 @@ if __name__ == "__main__":
             "email": "alice@example.com"
         }
 
-        send_json_to_ip(SERVER_IP, SERVER_PORT, data_to_send)
+        send_json_to_ip(SERVER_IP, SERVER_DEFUALT_PORT, data_to_send)

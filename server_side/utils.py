@@ -1,21 +1,7 @@
 import random
-from enum import Enum
-import socket
-import json
 
-class ProtocolsCodes(Enum):
-    RegisterRequestProtocolCode = "We"
-    ConnectRequestProtocolCode = "Love"
-    CheckWaitingMessagesProtocolCode = "This"
-    ProcessCommunicateProtocolCode = "Project"
-
-class SubProtocolsCodes(Enum):
-    GENERAL_SERVER_ERROR = 100
-
-
-
-def send_by_secure_channel(code, email): #todo
-    return 2
+def send_by_secure_channel(code):
+    print("code through secure channel is = ", code)
 
 def generate_random_code():
     """
