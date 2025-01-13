@@ -74,13 +74,6 @@ class RegisterRequestProtocol(Protocol):
             message_dict = {"code": SubProcessCodes.ServerSideProtocolCodes.Registration.REGISTER_SUCCESS.value}
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
-
-
-        # phone_number = decrypt_message(response_dict.get("phone_number"), private_key_from_file("private_key.pem"))
-        # if not validate_phone_number(phone_number):
-        #     return 1
-        # random_code = generate_random_code()
-        # self.process_register_request()
         except OSError:
             self.send_general_server_error(error_message)
 

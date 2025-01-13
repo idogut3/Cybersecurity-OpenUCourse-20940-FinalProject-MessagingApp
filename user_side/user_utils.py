@@ -1,3 +1,4 @@
+import os
 import random
 from cryptography.hazmat.primitives.asymmetric.ec import  EllipticCurvePublicKey, EllipticCurvePrivateKey
 from cryptography.hazmat.primitives import serialization
@@ -52,3 +53,17 @@ def generate_random_code():
         code += str(digit)  # Append the digit to the code as a string
     return code
 
+def make_directory(directory_name):
+    """
+       Creates a new directory with the specified name.
+
+       Args:
+           directory_name (str): The name of the directory to create.
+
+       If the directory already exists, no action is taken. If there is an error
+       creating the directory, an error message is printed.
+    """
+    try:  # Was able to create users directory
+        os.makedirs(directory_name)
+    except OSError as error:  # Error couldn't create directory
+        print(error)

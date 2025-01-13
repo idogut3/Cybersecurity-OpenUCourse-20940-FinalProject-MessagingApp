@@ -1,5 +1,4 @@
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
-from CommunicationUtils import send_json_to_ip
 from GlobalValidations import validate_phone_number
 from user_side.User import User
 from user_side.user_utils import load_public_key, load_private_key
@@ -52,23 +51,23 @@ def read_phone_number() -> str:
     except FileNotFoundError:
         raise FileNotFoundError(f"File {file_path} does not exist, user did not register.")
 
-def connect_to_server():
-    """Connect the user to the server."""
-    secret_code = get_secret_code()
-    try:
-        phone_number = read_phone_number()
-        print(f"Phone number read from file: {phone_number}")
-        user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
-        data_to_send = {
-            "code": "Love",
-            "phone_number": phone_number,
-            "secret_code": secret_code
-        }
-
-        recived_data = send_json_to_ip(SERVER_IP, SERVER_DEFUALT_PORT, data_to_send)
-        if recived_data["code"] == "We":
-            print("connection established!")
-            user.is_connected_to_server = True
+# def connect_to_server():
+#     """Connect the user to the server."""
+#     secret_code = get_secret_code()
+#     try:
+#         phone_number = read_phone_number()
+#         print(f"Phone number read from file: {phone_number}")
+#         user = User(3, load_public_key("public_key.pem"), load_private_key("private_key.pem"), phone_number)
+#         data_to_send = {
+#             "code": "Love",
+#             "phone_number": phone_number,
+#             "secret_code": secret_code
+#         }
+#
+#         recived_data = send_json_to_ip(SERVER_IP, SERVER_DEFUALT_PORT, data_to_send)
+#         if recived_data["code"] == "We":
+#             print("connection established!")
+#             user.is_connected_to_server = True
 
 
     except (FileNotFoundError, ValueError) as e:

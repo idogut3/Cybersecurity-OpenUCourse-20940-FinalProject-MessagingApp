@@ -1,4 +1,7 @@
+from user_side.user_utils import make_directory
+
 class User:
+    users_created = 0
     def __init__(self, version, public_key, private_key, phone_number, email):
         """
         Initialize a User instance.
@@ -18,6 +21,9 @@ class User:
         self.code = 0  # Initialized as 0, updated when registered
         self.is_connected_to_server = False  # Boolean to track server connection status
         self.waiting_messages = []  # List of messages waiting to be processed
+        User.users_created += 1
+        self.directory_path = "Cybersecurity-OpenUCourse-20940-FinalProject-MessagingApp\\user_side\\users\\" +  str(User.users_created)
+        make_directory(self.directory_path)
 
 
     def is_connected_to(self, phone_number):

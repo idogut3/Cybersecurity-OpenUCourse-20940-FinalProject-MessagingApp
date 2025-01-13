@@ -11,6 +11,7 @@ class SubProcessCodes(Enum):
 
     class GeneralCodes(Enum):
         GENERAL_SERVER_ERROR = 100
+        GENERAL_CLIENT_ERROR = 105
 
     class ServerSideProtocolCodes(Enum):
         
