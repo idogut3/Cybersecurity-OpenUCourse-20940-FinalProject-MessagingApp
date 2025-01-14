@@ -1,7 +1,6 @@
 from enum import Enum
 
-
-class ProcessCodes(Enum):
+class ProtocolCodes(Enum):
     init_RegistrationCode = "We"
     init_ConnectionCode = "Love"
     init_CheckWaitingMessagesCode = "This"

@@ -1,3 +1,5 @@
+import os
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
@@ -70,8 +72,11 @@ def save_keys_to_files(ecc_keys_file_path: str, public_key, private_key):
         ecc_keys_file_path: The directory location in which we want to save the keys in.
 
     """
-    public_key_path = ecc_keys_file_path + "\\" + "public_key.pem"
-    private_key_path = ecc_keys_file_path + "\\" + "private_key.pem"
+    # Ensure the directory exists
+    os.makedirs(ecc_keys_file_path, exist_ok=True)
+
+    public_key_path = os.path.join(ecc_keys_file_path, "public_key.pem")
+    private_key_path = os.path.join(ecc_keys_file_path, "private_key.pem")
 
     # Save public key
     with open(public_key_path, "wb") as public_file:

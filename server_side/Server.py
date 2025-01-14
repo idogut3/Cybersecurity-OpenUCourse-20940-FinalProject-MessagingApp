@@ -2,17 +2,23 @@ import json
 import socket
 import threading
 
-from CommunicationCodes import ProcessCodes
-from CommunicationConstants import SERVER_DEFUALT_PORT
+import server_side.Protocols
+from CommunicationCodes import ProtocolCodes
+from CommunicationConstants import SERVER_DEFUALT_PORT, SERVER_IP
 from DataBase import DataBase
 from GlobalCryptoUtils import generate_ecc_keys
 from KeyLoaders import save_keys_to_files, load_public_key_from_file
-from server_side.Protocols import RegisterRequestProtocol, CheckWaitingMessagesProtocol, ProcessCommunicateProtocol, \
-    ConnectRequestProtocol, Protocol
+from server_side.Protocols import Protocol
 
+PROTOCOL_MAP = {
+    ProtocolCodes.init_RegistrationCode.value: server_side.Protocols.RegisterRequestProtocol,
+    ProtocolCodes.init_ConnectionCode.value: server_side.Protocols.ConnectRequestProtocol,
+    ProtocolCodes.init_CheckWaitingMessagesCode.value: server_side.Protocols.CheckWaitingMessagesProtocol,
+    ProtocolCodes.initCommunicationCode.value: server_side.Protocols.ProcessCommunicateProtocol,
+}
 
 class Server:
-    def __init__(self, host_ip: str, port: int = SERVER_DEFUALT_PORT):
+    def __init__(self, host_ip: str = SERVER_IP, port: int = SERVER_DEFUALT_PORT):
         self.port = port
         self.host_ip = host_ip
         self.ADDR = (self.host_ip, self.port)
@@ -49,17 +55,10 @@ class Server:
         """
         Returns an instance of the appropriate protocol class based on the code.
         """
-        if code == ProcessCodes.init_RegistrationCode.value:
-            return RegisterRequestProtocol(server=self, conn=conn, request_dict=request_json)
-        elif code == ProcessCodes.init_ConnectionCode.value:
-            return ConnectRequestProtocol(server=self, conn=conn, request_dict=request_json)
-        elif code == ProcessCodes.init_CheckWaitingMessagesCode.value:
-            return CheckWaitingMessagesProtocol(server=self, conn=conn, request_dict=request_json)
-        elif code == ProcessCodes.initCommunicationCode.value:
-            return ProcessCommunicateProtocol(server=self, conn=conn, request_dict=request_json)
-        else:
-            # You could raise an exception or return a "no-op" protocol here
-            raise ValueError(f"Unknown protocol code: {code}")
+        protocol_class = PROTOCOL_MAP.get(code)
+        if protocol_class:
+            return protocol_class(server=self, conn=conn, request_dict=request_json)
+        raise ValueError(f"Unknown protocol code: {code}")
 
     def handle_client(self, conn: socket.socket, client_addr):
         """

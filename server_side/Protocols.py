@@ -2,18 +2,16 @@ import socket
 from abc import ABC, abstractmethod
 
 from CommunicationCodes import SubProcessCodes
-from CommunicationConstants import SERVER_IP
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
 from GlobalValidations import validate_phone_number
 from KeyLoaders import deserialize_pem_to_ecc_public_key
-from server_side.Server import Server
 from server_side.utils import send_by_secure_channel
 from user_side.user_utils import generate_random_code
 
 
 class Protocol(ABC):
-    def __init__(self, server: Server, conn: socket.socket, request_dict: dict):
+    def __init__(self, server, conn: socket.socket, request_dict: dict):
         self.request_dict = request_dict
         self.server = server
         self.database = server.get_database()  # Placeholder for database access

@@ -2,19 +2,18 @@ import socket
 import time
 from abc import ABC, abstractmethod
 
-from CommunicationCodes import ProcessCodes, SubProcessCodes
+from CommunicationCodes import ProtocolCodes, SubProcessCodes
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
 from user_side.User import User
-from user_side.menu import read_phone_number
 
 
 class Request(ABC):
-    def __init__(self, server_ip: SERVER_IP, server_port: SERVER_DEFUALT_PORT, user:User):
+    def __init__(self, user: User, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
         self.server_ip = server_ip
         self.server_port = server_port
-        self.user = User
+        self.user = user
         try:
             self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.conn.connect((server_ip, server_port))
@@ -22,7 +21,7 @@ class Request(ABC):
             print(f"Failed to connect client socket, error: {error}")
 
     @abstractmethod
-    def run(self):
+    def run(self) -> User:
         """The abstract method for running a request"""
         pass
 
@@ -51,7 +50,7 @@ class RegisterRequest(Request):
     def run(self):
         try:
             message_dict = {
-                "code": ProcessCodes.init_RegistrationCode.value
+                "code": ProtocolCodes.init_RegistrationCode.value
             }
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
@@ -62,13 +61,27 @@ class RegisterRequest(Request):
                 raise ValueError("No public_key value in dict received in Registration.SEND_PUBLIC_KEY")
 
             server_public_key = dict_received["public_key"]
-            phone_number = read_phone_number()
+            self.user.set_server_public_key(server_public_key)
+            phone_number = self.user.get_phone_number()
 
             self.send_phone_number(phone_number=phone_number)
 
             ask_user_if_received_secret_code()
 
+            users_public_key = self.user.get_public_key()
 
+            self.send_public_key(users_public_key)
+
+            register_request_dict = receive_json_as_dict_through_established_connection(self.conn)
+
+            if not register_request_dict[
+                       "code"] == SubProcessCodes.ServerSideProtocolCodes.Registration.REGISTER_SUCCESS.value:
+                print("Registration failed received")
+
+            else:
+                print("Registration successes")
+
+            return self.user
 
         except OSError as error:
             print(f"Error in RegisterRequest {error}")
@@ -79,7 +92,7 @@ class RegisterRequest(Request):
                         "phone_number": phone_number}
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
-    def send_public_key(self):
-        pass
-
-
+    def send_public_key(self, public_key):
+        message_dict = {"code": SubProcessCodes.UserSideRequestCodes.Registration.SEND_PUBLIC_KEY.value,
+                        "public_key": public_key}
+        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
