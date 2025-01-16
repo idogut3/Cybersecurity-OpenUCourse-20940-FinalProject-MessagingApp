@@ -7,7 +7,8 @@ from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
 from KeyLoaders import serialize_public_ecc_key_to_pem_format
-from user_side.User import User
+from user_side.User import User, get_validated_phone_number
+import re
 
 
 class Request(ABC):
@@ -98,3 +99,42 @@ class RegisterRequest(Request):
         message_dict = {"code": UserSideRequestCodes.SEND_PUBLIC_KEY.value,
                         "public_key": str(serialize_public_ecc_key_to_pem_format(public_key))}
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
+
+
+def get_secret_code_validated_to_send():
+        """
+        Generates and validates a 6-digit code.
+
+        Returns:
+            str: A validated 6-digit random code.
+        """
+        # Generate a random code using generate_random_code
+        # Validate the code
+        CODE_LENGTH = 6
+        pattern = fr"^\d{{{CODE_LENGTH}}}$"  # Regular expression for exactly 6 digits
+        code = input("Please enter the secret code:")
+        while not re.fullmatch(pattern, code):
+            print("Code is invalid (not long enough/too long)")
+            code = input("Enter code again")
+        return code
+
+class ConnectReqeust(Request):
+    def run(self):
+        print("INITIATING CONNECT REQUEST")
+
+        phone_number = get_validated_phone_number()
+        secret_code = get_secret_code_validated_to_send()
+
+        try:
+            message_dict = {
+                "code": ProtocolCodes.init_ConnectionCode.value,
+                "phone_number": phone_number,
+                "secret_code" : secret_code # todo:::::: ADD ENCRYPTION
+            }
+            #send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+            print("USER SENT SERVER HIS CONNECT REQUEST")
+
+        except OSError as error:
+            print(f"Error in RegisterRequest {error}")
+            self.send_general_client_error()

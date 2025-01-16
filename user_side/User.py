@@ -145,18 +145,21 @@ class User:
         self.waiting_messages = []
 
 
-def create_user() -> User:
-    USER_VERSION = 3
+
+def get_email_validated():
     validated_email = False
-    validated_phone_number = False
     email = ""
-    phone_number = ""
     while not validated_email:
         email = input("Enter your email: ")
         validated_email = validate_email(email)
 
         if not validated_email:
             print("Invalid email. Please try again.")
+    return email
+
+def get_validated_phone_number():
+    validated_phone_number = False
+    phone_number = ""
 
     # Loop until a valid phone number is provided
     while not validated_phone_number:
@@ -166,6 +169,13 @@ def create_user() -> User:
         if not validated_phone_number:
             print("Invalid phone number. Please try again.")
 
+    return phone_number
+
+def create_user() -> User:
+    USER_VERSION = 3
+
+    email = get_email_validated()
+    phone_number = get_validated_phone_number()
 
     public_key , private_key = generate_ecc_keys()
     new_user = User(version=USER_VERSION, public_key = public_key, private_key= private_key, email= email, phone_number=phone_number)
