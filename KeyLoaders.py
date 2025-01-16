@@ -77,7 +77,6 @@ def save_keys_to_files(ecc_keys_file_path: str, public_key, private_key):
 
     public_key_path = os.path.join(ecc_keys_file_path, "public_key.pem")
     private_key_path = os.path.join(ecc_keys_file_path, "private_key.pem")
-
     # Save public key
     with open(public_key_path, "wb") as public_file:
         public_file.write(serialize_public_ecc_key_to_pem_format(public_key))

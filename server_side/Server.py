@@ -1,10 +1,12 @@
 import json
+import os
 import socket
 import threading
 
 import server_side.Protocols
 from CommunicationCodes import ProtocolCodes
 from CommunicationConstants import SERVER_DEFUALT_PORT, SERVER_IP
+from CommunicationUtils import receive_json_as_dict_through_established_connection
 from DataBase import DataBase
 from GlobalCryptoUtils import generate_ecc_keys
 from KeyLoaders import save_keys_to_files, load_public_key_from_file
@@ -71,26 +73,20 @@ class Server:
         print(f"Connection established with {client_addr}")
         try:
             while True:
-                data = conn.recv(1024)  # Receive data (buffer size: 1024 bytes)
-                if not data:
-                    break  # Connection closed by the client
-
-                # Decode the received data
-                json_data = json.loads(data.decode('utf-8'))
-                print(f"Received JSON data from {client_addr}:", json_data)
+                data_dict = receive_json_as_dict_through_established_connection(conn=conn)
 
                 # Extract the "code" from the JSON, then create and execute the correct protocol
-                protocol_code = json_data.get("code")
+                protocol_code = data_dict.get("code")
                 if protocol_code:
                     try:
-                        protocol_instance = self.get_protocol(conn=conn, code=protocol_code, request_json=json_data)
+                        protocol_instance = self.get_protocol(conn=conn, code=protocol_code, request_json=data_dict)
                         # Execute the protocol logic
                         protocol_instance.run()
 
                     except ValueError as error:
                         print(f"Protocol instance run failed: {error}")
-                        error_response = json.dumps({"status": "error", "message": str(error)}).encode('utf-8')
-                        conn.sendall(error_response)
+                        # error_response = json.dumps({"status": "error", "message": str(error)}).encode('utf-8')
+                        # conn.sendall(error_response)
                 else:
                     # If "code" is not provided, send an error or handle as needed
                     error_response = json.dumps({
@@ -126,7 +122,8 @@ class Server:
                                    public_key=public_key,
                                    private_key=private_key
                                    )
-
+                # with open(os.path.join(self.ECC_KEYS_FILE_PATH, "private_key.pem")) as file:
+                #     print(file.read())
                 while True:  # Keep the server running
                     conn, addr = server_socket.accept()  # Accept a connection
                     # Start a new thread to handle the client

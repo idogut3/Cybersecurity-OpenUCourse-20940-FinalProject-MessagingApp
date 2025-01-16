@@ -2,10 +2,11 @@ import socket
 import time
 from abc import ABC, abstractmethod
 
-from CommunicationCodes import ProtocolCodes, SubProcessCodes
+from CommunicationCodes import ProtocolCodes, GeneralCodes, ServerSideProtocolCodes, UserSideRequestCodes
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
+from KeyLoaders import serialize_public_ecc_key_to_pem_format
 from user_side.User import User
 
 
@@ -26,7 +27,7 @@ class Request(ABC):
         pass
 
     def send_general_client_error(self, error_description="General Client Error"):
-        message_dict = {"code": SubProcessCodes.GeneralCodes.GENERAL_CLIENT_ERROR.value,
+        message_dict = {"code": GeneralCodes.GENERAL_CLIENT_ERROR.value,
                         "error_description": error_description}
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
@@ -53,9 +54,10 @@ class RegisterRequest(Request):
                 "code": ProtocolCodes.init_RegistrationCode.value
             }
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+            print("USER SENT SERVER HIS REGISTER REQUEST")
             dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
-
-            if dict_received["code"] != SubProcessCodes.ServerSideProtocolCodes.Registration.SEND_PUBLIC_KEY.value:
+            print("USER received RESPONSE [RECEIVED SERVER'S PUBLIC KEY] :", dict_received)
+            if dict_received["code"] != ServerSideProtocolCodes.SEND_PUBLIC_KEY.value:
                 raise ValueError("Wrong code received, was suppose to receive Registration.SEND_PUBLIC_KEY")
             if not "public_key" in dict_received:
                 raise ValueError("No public_key value in dict received in Registration.SEND_PUBLIC_KEY")
@@ -65,17 +67,17 @@ class RegisterRequest(Request):
             phone_number = self.user.get_phone_number()
 
             self.send_phone_number(phone_number=phone_number)
-
+            print("USER SENT HIS PHONE NUMBER")
             ask_user_if_received_secret_code()
 
             users_public_key = self.user.get_public_key()
 
             self.send_public_key(users_public_key)
-
+            print("USER SENT HIS PUBLIC KEY")
             register_request_dict = receive_json_as_dict_through_established_connection(self.conn)
-
+            print(f"USER RECEIVED RESPONSE, {register_request_dict}")
             if not register_request_dict[
-                       "code"] == SubProcessCodes.ServerSideProtocolCodes.Registration.REGISTER_SUCCESS.value:
+                       "code"] == ServerSideProtocolCodes.REGISTER_SUCCESS.value:
                 print("Registration failed received")
 
             else:
@@ -88,11 +90,11 @@ class RegisterRequest(Request):
             self.send_general_client_error()
 
     def send_phone_number(self, phone_number):
-        message_dict = {"code": SubProcessCodes.UserSideRequestCodes.Registration.SEND_PHONE_NUMBER.value,
+        message_dict = {"code": UserSideRequestCodes.SEND_PHONE_NUMBER.value,
                         "phone_number": phone_number}
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
     def send_public_key(self, public_key):
-        message_dict = {"code": SubProcessCodes.UserSideRequestCodes.Registration.SEND_PUBLIC_KEY.value,
-                        "public_key": public_key}
+        message_dict = {"code": UserSideRequestCodes.SEND_PUBLIC_KEY.value,
+                        "public_key": str(serialize_public_ecc_key_to_pem_format(public_key))}
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
