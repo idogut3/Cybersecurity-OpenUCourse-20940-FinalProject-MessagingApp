@@ -1,3 +1,4 @@
+from GlobalValidations import is_valid_phone_number
 from User import User
 
 class DataBase:
@@ -25,6 +26,13 @@ class DataBase:
         """
         return phone_number in self.users
 
+    def get_user_by_phone_number(self, phone_number):
+        if not is_valid_phone_number(phone_number=phone_number):
+            raise ValueError("phone_number is invalid")
+        if not self.is_user_registered(phone_number):
+            raise ValueError("User is not registered for this phone number")
+        return self.users[phone_number]
+
     def get_public_key_by_phone_number(self, phone_number):
         """
         Get the public key of a user by their phone number.
@@ -34,7 +42,7 @@ class DataBase:
         print(f"No user found with phone number {phone_number}.")
         return None
 
-    def check_secret_code(self, user, code):
+    def is_secret_code_correct_for_user(self, user, code):
         """
         Check if the given secret code matches the user's stored secret code.
         """

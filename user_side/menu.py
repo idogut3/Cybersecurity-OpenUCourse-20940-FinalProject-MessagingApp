@@ -1,6 +1,6 @@
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from GlobalCryptoUtils import generate_ecc_keys
-from GlobalValidations import validate_phone_number, validate_email
+from GlobalValidations import is_valid_phone_number, is_valid_email
 from user_side.Requests import RegisterRequest
 from user_side.User import create_user
 from user_side.user_utils import load_public_key, load_private_key

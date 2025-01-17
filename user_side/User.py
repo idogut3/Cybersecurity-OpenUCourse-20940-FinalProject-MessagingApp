@@ -1,6 +1,6 @@
 # from user_side.user_utils import make_directory
 from GlobalCryptoUtils import generate_ecc_keys
-from GlobalValidations import validate_email, validate_phone_number
+from GlobalValidations import is_valid_email, is_valid_phone_number
 
 
 class User:
@@ -151,7 +151,7 @@ def get_email_validated():
     email = ""
     while not validated_email:
         email = input("Enter your email: ")
-        validated_email = validate_email(email)
+        validated_email = is_valid_email(email)
 
         if not validated_email:
             print("Invalid email. Please try again.")
@@ -164,7 +164,7 @@ def get_validated_phone_number():
     # Loop until a valid phone number is provided
     while not validated_phone_number:
         phone_number = input("Enter your phone number: ")
-        validated_phone_number = validate_phone_number(phone_number)
+        validated_phone_number = is_valid_phone_number(phone_number)
 
         if not validated_phone_number:
             print("Invalid phone number. Please try again.")

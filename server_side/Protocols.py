@@ -1,10 +1,11 @@
 import socket
 from abc import ABC, abstractmethod
+from math import expm1
 
 from CommunicationCodes import GeneralCodes, UserSideRequestCodes, ServerSideProtocolCodes
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
-from GlobalValidations import validate_phone_number
+from GlobalValidations import is_valid_phone_number
 from KeyLoaders import deserialize_pem_to_ecc_public_key, serialize_public_ecc_key_to_pem_format
 from server_side.utils import send_by_secure_channel
 from user_side.user_utils import generate_random_code
@@ -44,7 +45,6 @@ class RegisterRequestProtocol(Protocol):
 
             send_phone_number_request_dict = receive_json_as_dict_through_established_connection(self.conn)
 
-
             if send_phone_number_request_dict[
                 "code"] != UserSideRequestCodes.SEND_PHONE_NUMBER.value:
                 error_message = "Wrong code, expected SEND_PHONE_NUMBER_REQUEST code"
@@ -54,7 +54,7 @@ class RegisterRequestProtocol(Protocol):
                 raise
             print("SERVER RECEIVED PHONE NUMBER FROM USER")
             phone_number = send_phone_number_request_dict["phone_number"]
-            if not validate_phone_number(phone_number) and not self.database.is_user_registered(phone_number):
+            if not is_valid_phone_number(phone_number) and not self.database.is_user_registered(phone_number):
                 error_message = "Phone number is not validated"
                 raise
             print("PHONE NUMBER FROM USER IS VALIDATED")
@@ -93,9 +93,44 @@ class RegisterRequestProtocol(Protocol):
 
 class ConnectRequestProtocol(Protocol):
     def run(self):
-        """Implementation of the protocol method."""
         print("Executing ConnectRequestProtocol protocol.")
-    #     self.process_connect_request()
+
+        try:
+            phone_number_received = self.request_dict["phone_number"]
+            secret_code_received = self.request_dict["secret_code"]
+
+            if not is_valid_phone_number(phone_number_received):
+                self.send_invalid_phone_number()
+                return False
+
+            if not self.database.is_user_registered(phone_number=phone_number_received):
+                self.send_invalid_phone_number()
+                return False
+
+            user = self.database.get_user_by_phone_number(phone_number_received)
+            if not self.database.is_secret_code_correct_for_user(user=user, code=secret_code_received):
+                self.send_invalid_secret_code()
+                return False
+            print("CONNECT REQUEST APPROVED NEW USER")
+            return True
+
+
+        except OSError as error:
+            print(f"Error at ConnectRequestProtocol {error}")
+            self.send_general_server_error()
+
+    def send_invalid_phone_number(self):
+        message_dict = {
+            "code": ServerSideProtocolCodes.INVALID_PHONE_NUMBER.value
+        }
+        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
+    def send_invalid_secret_code(self):
+        message_dict = {
+            "code": ServerSideProtocolCodes.INVALID_SECRET_CODE.value
+        }
+        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
     #
     # def process_connect_request(self):
     #     """Process the connect request logic."""

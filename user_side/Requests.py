@@ -119,6 +119,7 @@ def get_secret_code_validated_to_send():
             code = input("Enter code again")
         return code
 
+
 class ConnectReqeust(Request):
     def run(self):
         print("INITIATING CONNECT REQUEST")
@@ -130,11 +131,23 @@ class ConnectReqeust(Request):
             message_dict = {
                 "code": ProtocolCodes.init_ConnectionCode.value,
                 "phone_number": phone_number,
-                "secret_code" : secret_code # todo:::::: ADD ENCRYPTION
+                "secret_code" : secret_code
             }
-            #send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+            send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             print("USER SENT SERVER HIS CONNECT REQUEST")
+
+            data_dict_received_back = receive_json_as_dict_through_established_connection(conn=self.conn)
+
+            if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value or ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+                raise ValueError("Code Replied with (FOR CONNECT REQUEST) is INVALID")
+
+            if  data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+                print("ConnectRequestFailed")
+                return False
+
+            return True
 
         except OSError as error:
             print(f"Error in RegisterRequest {error}")
             self.send_general_client_error()
+

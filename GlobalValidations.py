@@ -1,6 +1,6 @@
 import re
 
-def validate_phone_number(phone_number: str) -> bool:
+def is_valid_phone_number(phone_number: str) -> bool:
     """
     Validates that the phone number is a 9-digit number formatted as +9725XXXXX.
 
@@ -15,7 +15,7 @@ def validate_phone_number(phone_number: str) -> bool:
     return re.match(pattern, phone_number) is not None
 
 
-def validate_email(email: str) -> bool:
+def is_valid_email(email: str) -> bool:
     """
     Validates if the provided email is in a correct format.
 

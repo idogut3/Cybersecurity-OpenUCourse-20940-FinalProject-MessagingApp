@@ -14,6 +14,10 @@ class GeneralCodes(Enum):
 class ServerSideProtocolCodes(Enum):
     SEND_PUBLIC_KEY = 101
     REGISTER_SUCCESS = 104
+    CONNECT_REQUEST_ACCEPTED = 106
+    CONNECT_REQUEST_NOT_ACCEPTED = 107
+    INVALID_PHONE_NUMBER = 108
+    INVALID_SECRET_CODE = 109
 
 class UserSideRequestCodes(Enum):
     SEND_PHONE_NUMBER = 102
