@@ -1,12 +1,14 @@
-# from user_side.user_utils import make_directory
+import os
+
 from GlobalCryptoUtils import generate_ecc_keys
 from GlobalValidations import is_valid_email, is_valid_phone_number
+from KeyLoaders import save_keys_to_files, serialize_public_ecc_key_to_pem_format
+from user_side.user_utils import load_public_key, load_private_key
 
+USER_PATH = "Cybersecurity-OpenUCourse-20940-FinalProject-MessagingApp\\user_side\\users"
 
 class User:
-    # users_created = 0
-
-    def __init__(self, version, public_key, private_key, phone_number, email):
+    def __init__(self, version, public_key, private_key, phone_number, email, user_path):
         """
         Initialize a User instance.
 
@@ -26,10 +28,7 @@ class User:
         self.is_connected_to_server = False  # Boolean to track server connection status
         self.waiting_messages = []  # List of messages waiting to be processed
         self.server_public_key = None
-        # User.users_created += 1
-        # self.directory_path = "Cybersecurity-OpenUCourse-20940-FinalProject-MessagingApp\\user_side\\users\\" + str(
-        #     User.users_created)
-        # make_directory(self.directory_path)
+        self.user_path = user_path
 
     def get_version(self):
         return self.version
@@ -38,10 +37,16 @@ class User:
         return self.public_key
 
     def set_server_public_key(self, server_public_key):
-        self.server_public_key = server_public_key
+        # self.server_public_key = server_public_key
+        server_public_key_path = os.path.join(self.user_path, "server_public_key.pem")
+        with open(server_public_key_path, "wb") as public_file:
+            public_file.write(serialize_public_ecc_key_to_pem_format(server_public_key))
 
     def get_server_public_key(self):
-        return self.server_public_key
+        server_public_key_path = os.path.join(self.user_path, "server_public_key.pem")
+        with open(server_public_key_path, "r") as public_file:
+            file = public_file.read()
+            print(file)
 
     def get_private_key(self):
         return self.private_key
@@ -57,12 +62,6 @@ class User:
 
     def set_email(self, email):
         self.email = email
-
-    def get_code(self):
-        return self.code
-
-    def set_code(self, code):
-        self.code = code
 
     def is_connected_to(self, phone_number):
         """
@@ -90,13 +89,13 @@ class User:
         else:
             print("Error: The target phone number is invalid.")
 
-    def connect_to_server(self):
-        """
-        Connect the user to the server (login).
-        """
-        if self.is_connected_to_server:
-            print(f"User {self.phone_number} is already connected to the server.")
-            return
+    # def connect_to_server(self):
+    #     """
+    #     Connect the user to the server (login).
+    #     """
+    #     if self.is_connected_to_server:
+    #         print(f"User {self.phone_number} is already connected to the server.")
+    #         return
 
         # Simulate server connection logic
         self.is_connected_to_server = True
@@ -144,6 +143,37 @@ class User:
     def clear_waiting_messages(self):
         self.waiting_messages = []
 
+def create_user() -> User:
+    USER_VERSION = 3
+
+    email = get_email_validated()
+    phone_number = get_validated_phone_number()
+    public_key , private_key = generate_ecc_keys()
+    user_path = USER_PATH.join(phone_number)
+    save_keys_to_files(user_path , public_key, private_key)
+    new_user = User(version=USER_VERSION, public_key = public_key, private_key= private_key, email= email, phone_number=phone_number, user_path = user_path)
+
+    return new_user
+
+def connect_to_user() -> User:
+    print("Entering connect to user, please enter your phone number and email")
+    email = get_email_validated()
+    phone_number = get_validated_phone_number()
+    try:
+        USER_VERSION = 3
+        user_path =  USER_PATH.join(phone_number)
+        public_key_path =  user_path.join("public_key.pem")
+        server_public_key_path = user_path.join("server_public_key.pem")
+        private_key_path = user_path.join("private_key.pem")
+
+        public_key = load_public_key(public_key_path)
+        private_key = load_private_key(private_key_path)
+
+        if os.path.exists(public_key_path) and os.path.exists(server_public_key_path) and os.path.exists(private_key_path):
+            return User(version = USER_VERSION, public_key=public_key, private_key=private_key, phone_number = phone_number, email = email, user_path = user_path)
+    except OSError:
+        raise OSError("User didn't exist cannot connect to it")
+
 
 
 def get_email_validated():
@@ -170,13 +200,3 @@ def get_validated_phone_number():
             print("Invalid phone number. Please try again.")
 
     return phone_number
-
-def create_user() -> User:
-    USER_VERSION = 3
-
-    email = get_email_validated()
-    phone_number = get_validated_phone_number()
-
-    public_key , private_key = generate_ecc_keys()
-    new_user = User(version=USER_VERSION, public_key = public_key, private_key= private_key, email= email, phone_number=phone_number)
-    return new_user

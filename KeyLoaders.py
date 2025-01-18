@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 
 
+
 def serialize_private_ecc_key_to_pem_format(private_ecc_key: EllipticCurvePrivateKey):
     private_key_pem = private_ecc_key.private_bytes(
         encoding=serialization.Encoding.PEM,

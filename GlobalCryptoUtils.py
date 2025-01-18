@@ -43,22 +43,37 @@ def generate_random_iv() -> bytes:
     return os.urandom(iv_size)
 
 
-def create_shared_secret(sender_public_key:EllipticCurvePublicKey, receiver_private_key:EllipticCurvePrivateKey) -> bytes:
+def create_shared_secret(receiver_public_key:EllipticCurvePublicKey, sender_private_key:EllipticCurvePrivateKey) -> bytes:
     """
     Creates a shared secret using ECDH key exchange.
 
     Args:
-        sender_public_key (EllipticCurvePublicKey): The sender's public key.
-        receiver_private_key (EllipticCurvePrivateKey): The receiver's private key.
+        receiver_public_key (EllipticCurvePublicKey): The sender's public key.
+        sender_private_key (EllipticCurvePrivateKey): The receiver's private key.
 
     Returns:
         bytes: The shared secret.
     """
     # Generate the raw shared key using ECDH
-    shared_key = receiver_private_key.exchange(ECDH(), sender_public_key)
+    shared_key = sender_private_key.exchange(ECDH(), receiver_public_key)
 
     return shared_key
 
+
+def generate_salt(length=16):
+    """
+    Generates a cryptographically secure random salt.
+
+    Parameters:
+        length (int): The length of the salt in bytes. Default is 16 bytes.
+                     Common lengths: 16, 32, or 64 bytes.
+
+    Returns:
+        bytes: A securely generated random salt.
+    """
+    if length <= 0:
+        raise ValueError("Salt length must be a positive integer.")
+    return os.urandom(length)
 
 def kdf_wrapper(shared_secret: bytes, salt: bytes):
     kdf = PBKDF2HMAC(

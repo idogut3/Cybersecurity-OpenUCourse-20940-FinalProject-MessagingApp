@@ -2,7 +2,7 @@ from enum import Enum
 
 class ProtocolCodes(Enum):
     init_RegistrationCode = "We"
-    init_ConnectionCode = "Love"
+    initConnectionAESExchange = "Love"
     init_CheckWaitingMessagesCode = "This"
     initCommunicationCode = "Project"
 
@@ -22,4 +22,5 @@ class ServerSideProtocolCodes(Enum):
 class UserSideRequestCodes(Enum):
     SEND_PHONE_NUMBER = 102
     SEND_PUBLIC_KEY = 103
+    SEND_MESSAGE = 110
 
