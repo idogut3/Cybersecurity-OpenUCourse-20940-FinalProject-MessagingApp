@@ -11,8 +11,10 @@ from CommunicationUtils import send_dict_as_json_through_established_socket_conn
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_key, encrypt_message_with_aes_cbc_key, \
     generate_random_iv, wrap_cbc_aes_key, generate_salt
 from KeyLoaders import serialize_public_ecc_key_to_pem_format
-from user_side.User import User, get_validated_phone_number, get_email_validated
+from user_side.User import User, get_validated_phone_number, get_email_validated, USER_PATH, get_server_public_key
 import re
+
+from user_side.user_utils import load_public_key, load_private_key
 
 
 class Request(ABC):
@@ -124,36 +126,73 @@ def get_secret_code_validated_to_send():
     return code
 
 
-# class ConnectReqeust(Request):
-#     def run(self):
-#         print("INITIATING CONNECT REQUEST")
-#
-#         phone_number = get_validated_phone_number()
-#         secret_code = get_secret_code_validated_to_send()
-#
-#         try:
-#             message_dict = {
-#                 "code": ProtocolCodes.init_ConnectionCode.value,
-#                 "phone_number": phone_number,
-#                 "secret_code" : secret_code
-#             }
-#             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
-#             print("USER SENT SERVER HIS CONNECT REQUEST")
-#
-#             data_dict_received_back = receive_json_as_dict_through_established_connection(conn=self.conn)
-#
-#             if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value or ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
-#                 raise ValueError("Code Replied with (FOR CONNECT REQUEST) is INVALID")
-#
-#             if  data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
-#                 print("ConnectRequestFailed")
-#                 return False
-#
-#             return True
-#
-#         except OSError as error:
-#             print(f"Error in RegisterRequest {error}")
-#             self.send_general_client_error()
+class ConnectReqeust(Request):
+    def __init__(self, user, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
+        super().__init__(server_ip, server_port)
+        self.user = user
+
+    def run(self):
+        print("INITIATING CONNECT REQUEST")
+        try:
+            secret_code = get_secret_code_validated_to_send()
+            phone_number = self.user.get_phone_number()
+
+            user_public_key = self.user.get_public_key()
+            user_private_key = self.user.get_private_key()
+
+            server_public_key = get_server_public_key()
+
+            # Establish a shared secret
+            shared_secret = create_shared_secret(server_public_key, user_private_key)
+
+            # Generate a random salt and derive an AES key from the shared secret
+            salt = generate_salt()
+            kdf_wrapped_shared_secret = kdf_wrapper(shared_secret, salt)
+
+            # Generate a random AES key to encrypt the secret message
+            secret_aes_key = generate_aes_key()
+
+            # Encrypt the secret code using AES-CBC
+            iv_for_secret = generate_random_iv()
+
+            encrypted_secret_code = encrypt_message_with_aes_cbc_key(message=secret_code.encode(),
+                                                                     aes_key=secret_aes_key,
+                                                                     iv=iv_for_secret)
+
+            # Wrap (encrypt) the AES key using the derived AES key
+            iv_for_wrapped_key = generate_random_iv()
+            wrapped_key_data = wrap_cbc_aes_key(aes_key=secret_aes_key,
+                                                kdf_wrapped_shared_secret=kdf_wrapped_shared_secret,
+                                                iv=iv_for_wrapped_key)
+            # Send encrypted data and the IV (example)
+            message_dict = {
+                "code": ProtocolCodes.initConnectionAESExchange.value,
+                "phone_number": phone_number,
+                "wrapped_aes_key": wrapped_key_data,
+                "iv_for_wrapped_key": iv_for_wrapped_key,
+                "encrypted_secret_code": encrypted_secret_code,
+                "iv_for_secret": iv_for_secret,
+                "salt": salt,
+            }
+
+            send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+            print("USER SENT SERVER HIS CONNECT REQUEST")
+
+            data_dict_received_back = receive_json_as_dict_through_established_connection(conn=self.conn)
+
+            if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value or ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+                raise ValueError("Code Replied with (FOR CONNECT REQUEST) is INVALID")
+
+            if  data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+                print("ConnectRequestFailed")
+                return False
+
+            return True
+
+        except OSError as error:
+            print(f"Error in RegisterRequest {error}")
+            self.send_general_client_error()
+
 
 class CommunicationRequest(Request):
     def __init__(self, user, target_phone_number, message: str, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
@@ -169,7 +208,7 @@ class CommunicationRequest(Request):
             message_dict = {
                 "code": ProtocolCodes.initCommunicationCode.value,
                 "phone_number": self.target_phone_number,
-                "sender_phone_number" : self.user.get_phone_number()
+                "sender_phone_number": self.user.get_phone_number()
             }
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             print("USER SENT SERVER HIS COMMUNICATION REQUEST")
@@ -189,7 +228,8 @@ class CommunicationRequest(Request):
                 aes_key = generate_aes_key()
                 iv = generate_random_iv()
                 wrapped_aes_key = wrap_cbc_aes_key(aes_key=aes_key, kdf_wrapped_shared_secret=kdf_wrapped_shared_secret)
-                encrypted_message = encrypt_message_with_aes_cbc_key(message=self.message.encode(), aes_key=aes_key,iv=iv)
+                encrypted_message = encrypt_message_with_aes_cbc_key(message=self.message.encode(), aes_key=aes_key,
+                                                                     iv=iv)
 
                 message_dict = {"code": UserSideRequestCodes.SEND_MESSAGE.value,
                                 "wrapped_aes_key": wrapped_aes_key,

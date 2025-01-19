@@ -85,20 +85,21 @@ def kdf_wrapper(shared_secret: bytes, salt: bytes):
     return kdf.derive(shared_secret)
 
 
-def wrap_cbc_aes_key(aes_key:bytes, kdf_wrapped_shared_secret:bytes):
+def wrap_cbc_aes_key(aes_key:bytes, kdf_wrapped_shared_secret:bytes,iv:bytes):
     """
         Encrypts (wraps) an AES key using AES-CBC with a KDF-wrapped shared secret.
 
         Args:
             aes_key (bytes): The AES key to be wrapped (16, 24, or 32 bytes).
             kdf_wrapped_shared_secret (bytes): The derived key from KDF (32 bytes).
-
+            iv (bytes): Initialization vector (16 bytes) for AES-CBC encryption.
         Returns:
             tuple: The wrapped AES key (ciphertext) and the IV used for encryption.
         """
     # Ensure the AES key is padded to match the block size (16 bytes)
     KEY_BLOCK_SIZE = 16
-    iv = generate_random_iv()
+    if len(iv) != KEY_BLOCK_SIZE:
+        raise ValueError("The IV must be exactly 16 bytes long.")
 
     # Create AES-CBC cipher
     cipher = Cipher(algorithms.AES(kdf_wrapped_shared_secret), modes.CBC(iv))
@@ -110,7 +111,7 @@ def wrap_cbc_aes_key(aes_key:bytes, kdf_wrapped_shared_secret:bytes):
     # Encrypt the AES key
     wrapped_aes_key = encryptor.update(padded_aes_key) + encryptor.finalize()
 
-    return {"wrapped_aes_key": wrapped_aes_key, "iv:": iv}
+    return wrapped_aes_key
 
 
 def unwrap_cbc_aes_key(wrapped_aes_key:bytes, kdf_wrapped_shared_secret:bytes, iv:bytes):

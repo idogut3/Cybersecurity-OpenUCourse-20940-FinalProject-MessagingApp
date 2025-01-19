@@ -5,6 +5,7 @@ from math import expm1
 from CommunicationCodes import GeneralCodes, UserSideRequestCodes, ServerSideProtocolCodes
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
+from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, unwrap_cbc_aes_key, decrypt_message_with_aes_cbc_key
 from GlobalValidations import is_valid_phone_number
 from KeyLoaders import deserialize_pem_to_ecc_public_key, serialize_public_ecc_key_to_pem_format
 from server_side.utils import send_by_secure_channel
@@ -94,23 +95,37 @@ class RegisterRequestProtocol(Protocol):
 class ConnectRequestProtocol(Protocol):
     def run(self):
         print("Executing ConnectRequestProtocol protocol.")
-
         try:
             phone_number_received = self.request_dict["phone_number"]
-            secret_code_received = self.request_dict["secret_code"]
+            wrapped_aes_key = self.request_dict["wrapped_aes_key"]
+            iv_for_wrapped_key = self.request_dict["iv_for_wrapped_key"]
+            encrypted_secret_code = self.request_dict["encrypted_secret_code"]
+            iv_for_secret = self.request_dict["iv_for_secret"]
+            received_salt = self.request_dict["salt"]
 
-            if not is_valid_phone_number(phone_number_received):
+            if not is_valid_phone_number(phone_number_received) or not self.database.is_user_registered(phone_number=phone_number_received):
                 self.send_invalid_phone_number()
                 return False
 
-            if not self.database.is_user_registered(phone_number=phone_number_received):
-                self.send_invalid_phone_number()
-                return False
+            user_public_key = self.database.get_public_key_by_phone_number(phone_number=phone_number_received)
 
-            user = self.database.get_user_by_phone_number(phone_number_received)
-            if not self.database.is_secret_code_correct_for_user(user=user, code=secret_code_received):
+            # Reconstruct the derived AES key using the same shared secret and salt
+            shared_secret = create_shared_secret(user_public_key, self.server.get_private_key())
+            reconstructed_encrypted_aes_key = kdf_wrapper(shared_secret, received_salt)
+
+            decrypted_aes_key = unwrap_cbc_aes_key(wrapped_aes_key=wrapped_aes_key,
+                                                   kdf_wrapped_shared_secret=shared_secret, iv=iv_for_wrapped_key)
+
+            decrypted_secret_code = decrypt_message_with_aes_cbc_key(encrypted_message=encrypted_secret_code,
+                                                                     aes_key=decrypted_aes_key,
+                                                                     iv=iv_for_secret)
+
+
+            user = self.database.get_user_by_phone_number(phone_number=phone_number_received)
+            if not self.database.is_secret_code_correct_for_user(user = user, code=decrypted_secret_code):
                 self.send_invalid_secret_code()
                 return False
+
             print("CONNECT REQUEST APPROVED NEW USER")
             return True
 
