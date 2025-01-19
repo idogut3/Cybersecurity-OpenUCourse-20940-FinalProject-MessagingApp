@@ -28,3 +28,12 @@ class User:
         Clears all the user's waiting messages.
         """
         self.waiting_messages.clear()
+
+    def get_waiting_messages(self):
+        """
+        Returns the list of waiting messages for the user.
+
+        Returns:
+            list: List of messages.
+        """
+        return self.waiting_messages

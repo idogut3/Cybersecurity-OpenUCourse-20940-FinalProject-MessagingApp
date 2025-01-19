@@ -7,7 +7,7 @@ from CommunicationUtils import send_dict_as_json_through_established_socket_conn
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, unwrap_cbc_aes_key, decrypt_message_with_aes_cbc_key
 from GlobalValidations import is_valid_phone_number
 from KeyLoaders import serialize_public_ecc_key_to_pem_format
-from server_side.Message import Message
+from Message import Message
 from server_side.utils import send_by_secure_channel
 from user_side.user_utils import generate_random_code
 
@@ -163,12 +163,14 @@ class ConnectRequestProtocol(Protocol):
             if request_dict["code"] == ProtocolCodes.init_CheckWaitingMessagesCode.value:
                 protocol_instance = CheckWaitingMessagesProtocol(server=self.server,
                                                                  conn=self.conn,
-                                                                 request_dict=request_dict)
+                                                                 request_dict=request_dict,
+                                                                 user_phone_number=phone_number_received)
                 protocol_instance.run()
             elif request_dict["code"] == ProtocolCodes.initCommunicationCode.value:
                 protocol_instance = ProcessCommunicateProtocol(server=self.server,
                                                                conn=self.conn,
-                                                               request_dict=request_dict)
+                                                               request_dict=request_dict,
+                                                               user_phone_number=phone_number_received)
                 protocol_instance.run()
             else:
                 return
@@ -179,26 +181,64 @@ class ConnectRequestProtocol(Protocol):
 
 
 class CheckWaitingMessagesProtocol(Protocol):
+    def __init__(self, server, conn: socket.socket, request_dict: dict, user_phone_number: str):
+        super().__init__(server=server, conn=conn, request_dict=request_dict)
+        self.user_phone_number = user_phone_number
+
     def run(self):
-        """Implementation of the protocol method."""
         print("Executing CheckWaitingMessagesProtocol protocol.")
-    #     self.process_check_user_waiting_messages()
-    #
-    # def process_check_user_waiting_messages(self):
-    #     """Process the logic to check user waiting messages."""
-    #     print("Checking user waiting messages...")
-    #     # Query the database for messages, etc.
-    #     response = json.dumps({"status": "messages_checked"}).encode('utf-8')
-    #     self.conn.sendall(response)
+        try:
+            waiting_messages = self.database.get_waiting_messages_for_user(phone_number=self.user_phone_number)
+            print("SERVER SENDING MESSAGES TO USER")
+            self.send_waiting_messages(waiting_messages=waiting_messages)
+            print("SERVER SENT USER ALL MESSAGES")
+
+        except OSError as error:
+            print(f"Error at CheckWaitingMessagesProtocol {error}")
+            self.send_general_server_error()
+
+    def send_waiting_messages(self, waiting_messages: list):
+        """
+        Sends each waiting message to the user over the established connection.
+
+        Args:
+            waiting_messages (list): A list of messages to send to the user.
+        """
+        total_messages = len(waiting_messages)  # Get the total number of messages
+        if total_messages == 0:
+            message_json_to_send = {"code": ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value,
+                                    "number_of_waiting": 0
+                                    }
+            send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_json_to_send)
+            return  # No messages to send
+
+        message_index = 0  # Initialize an index for the loop
+        for message in waiting_messages:
+            remaining_messages = total_messages - (message_index + 1)  # Calculate remaining messages
+            message_json_to_send = {"code": ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value,
+                                    "senders_phone_number": self.user_phone_number,
+                                    "senders_public_key": message.get_senders_public_key(),
+                                    "wrapped_aes_key": message.get_wrapped_aes_key(),
+                                    "iv_for_wrapped_key": message.get_iv_for_wrapped_key(),
+                                    "encrypted_message": message.get_encrypted_message(),
+                                    "iv_for_message": message.get_iv_for_message(),
+                                    "salt": message.get_salt()
+                                    }
+            send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_json_to_send)
+            message_index += 1
 
 
 class ProcessCommunicateProtocol(Protocol):
+    def __init__(self, server, conn: socket.socket, request_dict: dict, user_phone_number: str):
+        super().__init__(server=server, conn=conn, request_dict=request_dict)
+        self.user_phone_number = user_phone_number
+
     def run(self):
         """Implementation of the protocol method."""
         print("Executing ProcessCommunicateProtocol protocol.")
         try:
             recipients_phone_number = self.request_dict["recipients_phone_number"]
-            sender_phone_number = self.request_dict["sender_phone_number"]
+            sender_phone_number = self.user_phone_number
 
             if not is_valid_phone_number(recipients_phone_number) or not is_valid_phone_number(sender_phone_number):
                 self.send_invalid_phone_number(error_description="Phone number is invalid for recipient or sender's")
@@ -231,13 +271,12 @@ class ProcessCommunicateProtocol(Protocol):
                               wrapped_aes_key=wrapped_aes_key, iv_for_wrapped_key=iv_for_wrapped_key,
                               encrypted_message=encrypted_message, iv_for_message=iv_for_message, salt=salt)
 
-
-            self.database.add_message_to_user(phone_number=recipients_phone_number , message=message)
+            self.database.add_message_to_user(phone_number=recipients_phone_number, message=message)
 
             print("ADDED MESSAGE TO USER")
 
         except OSError as error:
-            print(f"Error at ConnectRequestProtocol {error}")
+            print(f"Error at ProcessCommunicateProtocol {error}")
             self.send_general_server_error()
 
     def send_encrypted_message_approved(self):

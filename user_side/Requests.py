@@ -198,19 +198,18 @@ class ConnectReqeust(Request):
 
 
 class CommunicationRequest(Request):
-    def __init__(self, user, target_phone_number, message: str, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
+    def __init__(self, user, target_phone_number, message_to_user: str, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
         super().__init__(server_ip, server_port)
         self.user = user
         self.target_phone_number = target_phone_number
-        self.message = message
+        self.message = message_to_user
 
     def run(self):
         try:
             print("INITIATING COMMUNICATION REQUEST")
             message_dict = {
                 "code": ProtocolCodes.initCommunicationCode.value,
-                "recipients_phone_number": self.target_phone_number,
-                "sender_phone_number": self.user.get_phone_number(),
+                "recipients_phone_number": self.target_phone_number
             }
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             print("USER SENT SERVER HIS COMMUNICATION REQUEST")
@@ -318,6 +317,8 @@ class CheckWaitingMessagesRequest(Request):
                 number_of_messages_waiting = int(dict_received["number_of_waiting"])
                 if number_of_messages_waiting < 0:
                     raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
+
+            print("FINISHED READING ALL YOUR MESSAGES")
 
         except OSError as error:
             print(f"Error in RegisterRequest {error}")
