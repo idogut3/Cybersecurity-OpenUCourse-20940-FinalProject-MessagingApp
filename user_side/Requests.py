@@ -3,6 +3,7 @@ import time
 from abc import ABC, abstractmethod
 
 from cryptography.hazmat.primitives.keywrap import aes_key_wrap
+from google.oauth2 import message
 
 from CommunicationCodes import ProtocolCodes, GeneralCodes, ServerSideProtocolCodes, UserSideRequestCodes
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
@@ -11,6 +12,7 @@ from CommunicationUtils import send_dict_as_json_through_established_socket_conn
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_key, encrypt_message_with_aes_cbc_key, \
     generate_random_iv, wrap_cbc_aes_key, generate_salt
 from KeyLoaders import serialize_public_ecc_key_to_pem_format
+from Message import Message
 from user_side.User import User, get_validated_phone_number, get_email_validated, USER_PATH, get_server_public_key
 import re
 
@@ -260,6 +262,62 @@ class CommunicationRequest(Request):
                 print("SENT SERVER THE ENCRYPTED MESSAGE")
             else:
                 return
+
+        except OSError as error:
+            print(f"Error in RegisterRequest {error}")
+            self.send_general_client_error()
+
+
+class CheckWaitingMessagesRequest(Request):
+    def __init__(self, user, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
+        super().__init__(server_ip, server_port)
+        self.user = user
+
+    def run(self):
+        print("INITIATING CHECK WAITING MESSAGES REQUEST")
+        try:
+            message_dict = {
+                "code": ProtocolCodes.init_CheckWaitingMessagesCode.value
+            }
+            send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
+            print("USER SENT SERVER HIS CHECK WAITING MESSAGES REQUEST")
+            dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
+
+            if not dict_received["code"] == ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value:
+                raise ValueError("EXPECTED CHECK_WAITING_MESSAGES_APPROVED CODE BUT DID NOT RECEIVE IT")
+
+            number_of_messages_waiting = int(dict_received["number_of_waiting"])
+
+            if number_of_messages_waiting < 0:
+                raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
+
+            while number_of_messages_waiting > 0:
+                senders_phone_number = dict_received["senders_phone_number"]
+                senders_public_key = dict_received["senders_public_key"]
+                wrapped_aes_key = dict_received["wrapped_aes_key"]
+                iv_for_wrapped_key = dict_received["iv_for_wrapped_key"]
+                encrypted_message = dict_received["encrypted_message"]
+                iv_for_message = dict_received["iv_for_message"]
+                salt = dict_received["salt"]
+
+                message_received = Message(senders_phone_number=senders_phone_number,
+                                           senders_public_key=senders_public_key,
+                                           wrapped_aes_key=wrapped_aes_key,
+                                           iv_for_wrapped_key=iv_for_wrapped_key,
+                                           encrypted_message=encrypted_message,
+                                           iv_for_message=iv_for_message, salt=salt)
+
+                message_received.display_decrypted_message(receiver_private_key=self.user.get_private_key())
+
+                dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
+
+                if not dict_received["code"] == ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value:
+                    raise ValueError("EXPECTED CHECK_WAITING_MESSAGES_APPROVED CODE BUT DID NOT RECEIVE IT")
+
+                number_of_messages_waiting = int(dict_received["number_of_waiting"])
+                if number_of_messages_waiting < 0:
+                    raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
 
         except OSError as error:
             print(f"Error in RegisterRequest {error}")

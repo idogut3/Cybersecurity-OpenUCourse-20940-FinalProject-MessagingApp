@@ -1,13 +1,12 @@
 import socket
 from abc import ABC, abstractmethod
-from math import expm1
 
 from CommunicationCodes import GeneralCodes, UserSideRequestCodes, ServerSideProtocolCodes, ProtocolCodes
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, unwrap_cbc_aes_key, decrypt_message_with_aes_cbc_key
 from GlobalValidations import is_valid_phone_number
-from KeyLoaders import deserialize_pem_to_ecc_public_key, serialize_public_ecc_key_to_pem_format
+from KeyLoaders import serialize_public_ecc_key_to_pem_format
 from server_side.Message import Message
 from server_side.utils import send_by_secure_channel
 from user_side.user_utils import generate_random_code

@@ -87,3 +87,10 @@ class Message:
 
         except Exception as e:
             raise ValueError(f"Failed to decrypt message: {e}")
+
+    def display_decrypted_message(self, receiver_private_key: EllipticCurvePrivateKey):
+        decrypted_message = self.decrypt_message(receiver_private_key)
+
+        print("Message Received from: ", self.senders_phone_number)
+        print("Is:\n", decrypted_message)
+
