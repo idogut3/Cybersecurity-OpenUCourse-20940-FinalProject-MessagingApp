@@ -1,5 +1,7 @@
 from GlobalValidations import is_valid_phone_number
 from User import User
+from server_side.Message import Message
+
 
 class DataBase:
     def __init__(self):
@@ -50,3 +52,23 @@ class DataBase:
             return user.secret_code == code
         print("User not found in the database.")
         return False
+
+    def add_message_to_user(self, phone_number, message: Message):
+        """
+        Add a message to the user's waiting messages.
+
+        Args:
+            phone_number (str): The phone number of the user.
+            message (Message): The message to add.
+
+        Raises:
+            ValueError: If the phone number is invalid or the user is not registered.
+        """
+        if not is_valid_phone_number(phone_number):
+            raise ValueError("Invalid phone number.")
+
+        if phone_number not in self.users:
+            raise ValueError(f"No user registered with phone number {phone_number}.")
+
+        user = self.users[phone_number]
+        user.add_message(message)

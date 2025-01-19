@@ -1,61 +1,89 @@
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
+
+from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, unwrap_cbc_aes_key, decrypt_message_with_aes_cbc_key
+
+
 class Message:
-    def __init__(self, senders_phone_number, targets_phone_number, senders_public_key,
-                 aes_wrapped_key, iv, encrypted_content):
-        self.senders_phone_number = senders_phone_number  # Sender's phone number
-        self.targets_phone_number = targets_phone_number  # Target's phone number
-        self.senders_public_key = senders_public_key  # Sender's public key
-        self.aes_wrapped_key = aes_wrapped_key  # Encrypted AES key
-        self.iv = iv  # Initialization vector (not encrypted)
-        self.encrypted_content = encrypted_content  # Encrypted content of the message
+    def __init__(self, senders_phone_number: str, senders_public_key: EllipticCurvePublicKey, wrapped_aes_key: bytes,
+                 iv_for_wrapped_key: bytes, encrypted_message: bytes,
+                 iv_for_message: bytes, salt: bytes):
+        """
+                Initializes a Message object with all required components.
 
-    # Setters
-    def set_senders_phone_number(self, senders_phone_number):
-        """Set the sender's phone number."""
+                Args:
+                    senders_phone_number (str): The sender's phone number as a string.
+                    senders_public_key (EllipticCurvePublicKey): The sender's public key in bytes.
+                    wrapped_aes_key (bytes): The AES key wrapped with the recipient's public key.
+                    iv_for_wrapped_key (bytes): The initialization vector (IV) for decrypting the wrapped key.
+                    encrypted_message (bytes): The message encrypted using the AES key.
+                    iv_for_message (bytes): The initialization vector (IV) for decrypting the encrypted message.
+                    salt (bytes): The salt used for key derivation.
+                """
         self.senders_phone_number = senders_phone_number
-
-    def set_targets_phone_number(self, targets_phone_number):
-        """Set the target's phone number."""
-        self.targets_phone_number = targets_phone_number
-
-    def set_senders_public_key(self, senders_public_key):
-        """Set the sender's public key."""
         self.senders_public_key = senders_public_key
+        self.wrapped_aes_key = wrapped_aes_key
+        self.iv_for_wrapped_key = iv_for_wrapped_key
+        self.encrypted_message = encrypted_message
+        self.iv_for_message = iv_for_message
+        self.salt = salt
 
-    def set_aes_wrapped_key(self, aes_wrapped_key):
-        """Set the AES wrapped key (encrypted with a derived key)."""
-        self.aes_wrapped_key = aes_wrapped_key
-
-    def set_iv(self, iv):
-        """Set the initialization vector (IV)."""
-        self.iv = iv
-
-    def set_encrypted_content(self, encrypted_content):
-        """Set the encrypted content of the message."""
-        self.encrypted_content = encrypted_content
-
-    # Getters
+    # Getter for sender's phone number
     def get_senders_phone_number(self):
-        """Get the sender's phone number."""
         return self.senders_phone_number
 
-    def get_targets_phone_number(self):
-        """Get the target's phone number."""
-        return self.targets_phone_number
-
+    # Getter for sender's public key
     def get_senders_public_key(self):
-        """Get the sender's public key."""
         return self.senders_public_key
 
-    def get_aes_wrapped_key(self):
-        """Get the AES wrapped key (encrypted with a derived key)."""
-        return self.aes_wrapped_key
+    # Getter for wrapped AES key
+    def get_wrapped_aes_key(self):
+        return self.wrapped_aes_key
 
-    def get_iv(self):
-        """Get the initialization vector (IV)."""
-        return self.iv
+    # Getter for IV for wrapped key
+    def get_iv_for_wrapped_key(self):
+        return self.iv_for_wrapped_key
 
-    def get_encrypted_content(self):
-        """Get the encrypted content of the message."""
-        return self.encrypted_content
+    # Getter for encrypted message
+    def get_encrypted_message(self):
+        return self.encrypted_message
 
+    # Getter for IV for message
+    def get_iv_for_message(self):
+        return self.iv_for_message
 
+    # Getter for salt
+    def get_salt(self):
+        return self.salt
+
+    def decrypt_message(self, receiver_private_key: EllipticCurvePrivateKey) -> str:
+        """
+        Decrypts the message using the recipient's private key.
+
+        Args:
+            receiver_private_key (EllipticCurvePrivateKey): The recipient's private key.
+
+        Returns:
+            str: The decrypted message as a string.
+        """
+        try:
+            # Step 1: Generate the shared secret using ECDH
+            shared_secret = create_shared_secret(self.senders_public_key, receiver_private_key)
+
+            # Step 2: Derive the AES key using KDF and the shared secret
+            derived_key = kdf_wrapper(shared_secret, self.salt)
+
+            # Step 3: Unwrap the AES key using the derived key and the IV for the wrapped key
+            aes_key = unwrap_cbc_aes_key(self.wrapped_aes_key, derived_key, self.iv_for_wrapped_key)
+
+            # Step 4: Decrypt the encrypted message using the unwrapped AES key and the IV for the message
+            decrypted_message_bytes = decrypt_message_with_aes_cbc_key(
+                self.encrypted_message, aes_key, self.iv_for_message
+            )
+
+            # Step 5: Convert the decrypted message bytes to a string
+            decrypted_message = decrypted_message_bytes.decode('utf-8')
+
+            return decrypted_message
+
+        except Exception as e:
+            raise ValueError(f"Failed to decrypt message: {e}")

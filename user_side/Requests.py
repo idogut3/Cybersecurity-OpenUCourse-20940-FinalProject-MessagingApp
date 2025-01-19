@@ -255,6 +255,9 @@ class CommunicationRequest(Request):
                     "iv_for_message": iv_for_secret,
                     "salt": salt,
                 }
+                send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
+                print("SENT SERVER THE ENCRYPTED MESSAGE")
             else:
                 return
 

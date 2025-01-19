@@ -8,6 +8,7 @@ from CommunicationUtils import send_dict_as_json_through_established_socket_conn
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, unwrap_cbc_aes_key, decrypt_message_with_aes_cbc_key
 from GlobalValidations import is_valid_phone_number
 from KeyLoaders import deserialize_pem_to_ecc_public_key, serialize_public_ecc_key_to_pem_format
+from server_side.Message import Message
 from server_side.utils import send_by_secure_channel
 from user_side.user_utils import generate_random_code
 
@@ -27,6 +28,19 @@ class Protocol(ABC):
     def send_general_server_error(self, error_description="General Server Error"):
         message_dict = {"code": GeneralCodes.GENERAL_SERVER_ERROR.value,
                         "error_description": error_description}
+        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
+    def send_invalid_phone_number(self, error_description="Invalid phone number error"):
+        message_dict = {
+            "code": ServerSideProtocolCodes.INVALID_PHONE_NUMBER.value,
+            "error_description": error_description
+        }
+        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
+
+    def send_invalid_secret_code(self):
+        message_dict = {
+            "code": ServerSideProtocolCodes.INVALID_SECRET_CODE.value
+        }
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
 
@@ -90,8 +104,8 @@ class RegisterRequestProtocol(Protocol):
                 protocol_instance.run()
             elif request_dict["code"] == ProtocolCodes.initCommunicationCode.value:
                 protocol_instance = ProcessCommunicateProtocol(server=self.server,
-                                                                 conn=self.conn,
-                                                                 request_dict=request_dict)
+                                                               conn=self.conn,
+                                                               request_dict=request_dict)
                 protocol_instance.run()
             else:
                 return
@@ -154,8 +168,8 @@ class ConnectRequestProtocol(Protocol):
                 protocol_instance.run()
             elif request_dict["code"] == ProtocolCodes.initCommunicationCode.value:
                 protocol_instance = ProcessCommunicateProtocol(server=self.server,
-                                                                 conn=self.conn,
-                                                                 request_dict=request_dict)
+                                                               conn=self.conn,
+                                                               request_dict=request_dict)
                 protocol_instance.run()
             else:
                 return
@@ -163,18 +177,6 @@ class ConnectRequestProtocol(Protocol):
         except OSError as error:
             print(f"Error at ConnectRequestProtocol {error}")
             self.send_general_server_error()
-
-    def send_invalid_phone_number(self):
-        message_dict = {
-            "code": ServerSideProtocolCodes.INVALID_PHONE_NUMBER.value
-        }
-        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
-
-    def send_invalid_secret_code(self):
-        message_dict = {
-            "code": ServerSideProtocolCodes.INVALID_SECRET_CODE.value
-        }
-        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
 
 class CheckWaitingMessagesProtocol(Protocol):
@@ -195,11 +197,50 @@ class ProcessCommunicateProtocol(Protocol):
     def run(self):
         """Implementation of the protocol method."""
         print("Executing ProcessCommunicateProtocol protocol.")
-    #     self.process_communicate()
-    #
-    # def process_communicate(self):
-    #     """Process the communication logic."""
-    #     print("Processing communication...")
-    #     # Handle sending/receiving messages
-    #     response = json.dumps({"status": "message_processed"}).encode('utf-8')
-    #     self.conn.sendall(response)
+        try:
+            recipients_phone_number = self.request_dict["recipients_phone_number"]
+            sender_phone_number = self.request_dict["sender_phone_number"]
+
+            if not is_valid_phone_number(recipients_phone_number) or not is_valid_phone_number(sender_phone_number):
+                self.send_invalid_phone_number(error_description="Phone number is invalid for recipient or sender's")
+                return
+
+            elif not self.database.is_user_registered(recipients_phone_number) or not self.database.is_user_registered(
+                    sender_phone_number):
+                self.send_invalid_phone_number(
+                    error_description="Phone number for recipient or sender's not registered to server")
+                return
+
+            print("APPROVED ProcessCommunicate SENDING USER JSON TO TELL HIM HE CAN SEND A MESSAGE")
+            self.send_encrypted_message_approved()
+
+            request_dict = receive_json_as_dict_through_established_connection(self.conn)
+
+            print("SERVER received RESPONSE  :", request_dict)
+
+            if request_dict["code"] != UserSideRequestCodes.SEND_MESSAGE.value:
+                raise ValueError("GOT UNEXPECTED USER MESSAGE CODE, EXISTING")
+
+            sender_public_key = request_dict["sender_public_key"]
+            wrapped_aes_key = request_dict["wrapped_aes_key"]
+            iv_for_wrapped_key = request_dict["iv_for_wrapped_key"]
+            encrypted_message = request_dict["encrypted_message"]
+            iv_for_message = request_dict["iv_for_message"]
+            salt = request_dict["salt"]
+
+            message = Message(senders_phone_number=sender_phone_number, senders_public_key=sender_public_key,
+                              wrapped_aes_key=wrapped_aes_key, iv_for_wrapped_key=iv_for_wrapped_key,
+                              encrypted_message=encrypted_message, iv_for_message=iv_for_message, salt=salt)
+
+
+            self.database.add_message_to_user(phone_number=recipients_phone_number , message=message)
+
+            print("ADDED MESSAGE TO USER")
+
+        except OSError as error:
+            print(f"Error at ConnectRequestProtocol {error}")
+            self.send_general_server_error()
+
+    def send_encrypted_message_approved(self):
+        message_dict = {"code": ServerSideProtocolCodes.SEND_YOUR_ENCRYPTED_MESSAGE.value}
+        send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
