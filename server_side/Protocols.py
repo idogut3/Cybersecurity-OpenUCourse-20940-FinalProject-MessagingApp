@@ -2,7 +2,7 @@ import socket
 from abc import ABC, abstractmethod
 from math import expm1
 
-from CommunicationCodes import GeneralCodes, UserSideRequestCodes, ServerSideProtocolCodes
+from CommunicationCodes import GeneralCodes, UserSideRequestCodes, ServerSideProtocolCodes, ProtocolCodes
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, unwrap_cbc_aes_key, decrypt_message_with_aes_cbc_key
@@ -81,8 +81,24 @@ class RegisterRequestProtocol(Protocol):
             message_dict = {"code": ServerSideProtocolCodes.REGISTER_SUCCESS.value}
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
+            request_dict = receive_json_as_dict_through_established_connection(self.conn)
+
+            if request_dict["code"] == ProtocolCodes.init_CheckWaitingMessagesCode.value:
+                protocol_instance = CheckWaitingMessagesProtocol(server=self.server,
+                                                                 conn=self.conn,
+                                                                 request_dict=request_dict)
+                protocol_instance.run()
+            elif request_dict["code"] == ProtocolCodes.initCommunicationCode.value:
+                protocol_instance = ProcessCommunicateProtocol(server=self.server,
+                                                                 conn=self.conn,
+                                                                 request_dict=request_dict)
+                protocol_instance.run()
+            else:
+                return
+
         except OSError:
             self.send_general_server_error(error_message)
+            return
 
     def send_public_key_to_user(self, public_key):
         message_dict = {
@@ -103,9 +119,10 @@ class ConnectRequestProtocol(Protocol):
             iv_for_secret = self.request_dict["iv_for_secret"]
             received_salt = self.request_dict["salt"]
 
-            if not is_valid_phone_number(phone_number_received) or not self.database.is_user_registered(phone_number=phone_number_received):
+            if not is_valid_phone_number(phone_number_received) or not self.database.is_user_registered(
+                    phone_number=phone_number_received):
                 self.send_invalid_phone_number()
-                return False
+                return
 
             user_public_key = self.database.get_public_key_by_phone_number(phone_number=phone_number_received)
 
@@ -114,21 +131,34 @@ class ConnectRequestProtocol(Protocol):
             reconstructed_encrypted_aes_key = kdf_wrapper(shared_secret, received_salt)
 
             decrypted_aes_key = unwrap_cbc_aes_key(wrapped_aes_key=wrapped_aes_key,
-                                                   kdf_wrapped_shared_secret=reconstructed_encrypted_aes_key, iv=iv_for_wrapped_key)
+                                                   kdf_wrapped_shared_secret=reconstructed_encrypted_aes_key,
+                                                   iv=iv_for_wrapped_key)
 
             decrypted_secret_code = decrypt_message_with_aes_cbc_key(encrypted_message=encrypted_secret_code,
                                                                      aes_key=decrypted_aes_key,
                                                                      iv=iv_for_secret)
 
-
             user = self.database.get_user_by_phone_number(phone_number=phone_number_received)
-            if not self.database.is_secret_code_correct_for_user(user = user, code=decrypted_secret_code):
+            if not self.database.is_secret_code_correct_for_user(user=user, code=decrypted_secret_code):
                 self.send_invalid_secret_code()
-                return False
+                return
 
             print("CONNECT REQUEST APPROVED NEW USER")
-            return True
 
+            request_dict = receive_json_as_dict_through_established_connection(self.conn)
+
+            if request_dict["code"] == ProtocolCodes.init_CheckWaitingMessagesCode.value:
+                protocol_instance = CheckWaitingMessagesProtocol(server=self.server,
+                                                                 conn=self.conn,
+                                                                 request_dict=request_dict)
+                protocol_instance.run()
+            elif request_dict["code"] == ProtocolCodes.initCommunicationCode.value:
+                protocol_instance = ProcessCommunicateProtocol(server=self.server,
+                                                                 conn=self.conn,
+                                                                 request_dict=request_dict)
+                protocol_instance.run()
+            else:
+                return
 
         except OSError as error:
             print(f"Error at ConnectRequestProtocol {error}")
@@ -145,14 +175,6 @@ class ConnectRequestProtocol(Protocol):
             "code": ServerSideProtocolCodes.INVALID_SECRET_CODE.value
         }
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
-
-    #
-    # def process_connect_request(self):
-    #     """Process the connect request logic."""
-    #     print("Processing connect request...")
-    #     # Possibly verify credentials, etc.
-    #     response = json.dumps({"status": "connected"}).encode('utf-8')
-    #     self.conn.sendall(response)
 
 
 class CheckWaitingMessagesProtocol(Protocol):

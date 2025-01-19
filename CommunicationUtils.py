@@ -1,7 +1,8 @@
 import json
 import socket
 
-from CommunicationConstants import JSON_LENGTH_PREFIX, JSON_ENDIAN_BYTE_ORDER, MAX_ALLOWED_PAYLOAD_SIZE
+from CommunicationConstants import JSON_LENGTH_PREFIX, JSON_ENDIAN_BYTE_ORDER, MAX_ALLOWED_PAYLOAD_SIZE, \
+    CONNECTION_TIMEOUT_SECONDS
 
 
 def send_dict_as_json_through_established_socket_connection(conn: socket.socket, data: dict) -> None:
@@ -55,6 +56,7 @@ def receive_json_as_dict_through_established_connection(conn: socket.socket) -> 
         ValueError: If the received data is not valid JSON.
         socket.error: If there's an error receiving data through the socket.
     """
+    conn.settimeout(CONNECTION_TIMEOUT_SECONDS) # If the socket doesn't receive data for CONNECTION_TIMEOUT_SECONDS then exiting the function
     try:
         # Read the 4-byte length prefix
         length_prefix = b""

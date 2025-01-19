@@ -29,13 +29,16 @@ def get_secret_code() -> str:
 def display_options():
     """Display available user options (CLI-based implementation)."""
     print("1. Register to server")
-    #print("2. Connect to server")
-    # print("2. Add new connection")
-    print("2. Send message")
-    print("3. Show waiting messages")
+    print("2. Connect to server")
 
 
-def get_validated_option_number():
+def display_options_after_connection():
+    print("Now that you are connected what do you want to do?")
+    print("1. Send message")
+    print("2. Show waiting messages")
+
+
+def get_validated_option_number(lowest, highest):
     """
         After the options were displayed, returns the number the user chose,
         :raises error if the option number is illegal
@@ -46,7 +49,7 @@ def get_validated_option_number():
             number = int(input("Enter a number between 1 and 3: "))
 
             # Validate the range
-            if 1 <= number <= 3:
+            if lowest <= number <= highest:
                 return number
             else:
                 print("\nInvalid input. Please enter a number between 1 and 3.")
@@ -56,26 +59,26 @@ def get_validated_option_number():
 
 
 def decide_which_process_to_perform(chosen_number):
+    connected = False
     if chosen_number == 1:
         user = User.create_user()
         register_request = RegisterRequest(user=user)
-        register_request.run()
+        connected = register_request.run()
     elif chosen_number == 2:
-        print("Send message")
         user = connect_to_user()
+        connect_request = ConnectReqeust(user=user)
+        connected = connect_request.run()
+
+    if connected:
+        display_options_after_connection()
+        chosen_number = get_validated_option_number(1, 2)
+
+        # if chosen_number == 1: TODO::::::::::::::::::::::::::
+        #     send_message_request =
+        # elif chosen_number == 2:
 
 
-    #     user
-    #     public_key = load_public_key()
-    #     # user = User()
-    #    connect_request = ConnectReqeust()
-    #     # connect_to_server()
-    # elif chosen_number == 3:
-    #     pass  # todo
-    # elif chosen_number == 4:
-    #     pass  # todo
-    # else:
-    #     pass  # todo
+
 
 
 

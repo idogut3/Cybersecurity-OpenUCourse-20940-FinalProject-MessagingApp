@@ -14,9 +14,7 @@ from server_side.Protocols import Protocol
 
 PROTOCOL_MAP = {
     ProtocolCodes.init_RegistrationCode.value: server_side.Protocols.RegisterRequestProtocol,
-    ProtocolCodes.init_ConnectionCode.value: server_side.Protocols.ConnectRequestProtocol,
-    ProtocolCodes.init_CheckWaitingMessagesCode.value: server_side.Protocols.CheckWaitingMessagesProtocol,
-    ProtocolCodes.initCommunicationCode.value: server_side.Protocols.ProcessCommunicateProtocol,
+    ProtocolCodes.initConnectionAESExchange.value: server_side.Protocols.ConnectRequestProtocol
 }
 
 class Server:
