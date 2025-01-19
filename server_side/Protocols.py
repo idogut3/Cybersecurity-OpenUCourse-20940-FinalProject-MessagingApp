@@ -114,7 +114,7 @@ class ConnectRequestProtocol(Protocol):
             reconstructed_encrypted_aes_key = kdf_wrapper(shared_secret, received_salt)
 
             decrypted_aes_key = unwrap_cbc_aes_key(wrapped_aes_key=wrapped_aes_key,
-                                                   kdf_wrapped_shared_secret=shared_secret, iv=iv_for_wrapped_key)
+                                                   kdf_wrapped_shared_secret=reconstructed_encrypted_aes_key, iv=iv_for_wrapped_key)
 
             decrypted_secret_code = decrypt_message_with_aes_cbc_key(encrypted_message=encrypted_secret_code,
                                                                      aes_key=decrypted_aes_key,
