@@ -164,7 +164,7 @@ class ConnectReqeust(Request):
             wrapped_key_data = wrap_cbc_aes_key(aes_key=secret_aes_key,
                                                 kdf_wrapped_shared_secret=kdf_wrapped_shared_secret,
                                                 iv=iv_for_wrapped_key)
-            # Send encrypted data and the IV (example)
+            # Send encrypted data and the IV
             message_dict = {
                 "code": ProtocolCodes.initConnectionAESExchange.value,
                 "phone_number": phone_number,
@@ -180,10 +180,11 @@ class ConnectReqeust(Request):
 
             data_dict_received_back = receive_json_as_dict_through_established_connection(conn=self.conn)
 
-            if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value or ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+            if data_dict_received_back[
+                "code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value or ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
                 raise ValueError("Code Replied with (FOR CONNECT REQUEST) is INVALID")
 
-            if  data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+            if data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
                 print("ConnectRequestFailed")
                 return False
 
@@ -204,11 +205,10 @@ class CommunicationRequest(Request):
     def run(self):
         try:
             print("INITIATING COMMUNICATION REQUEST")
-
             message_dict = {
                 "code": ProtocolCodes.initCommunicationCode.value,
-                "phone_number": self.target_phone_number,
-                "sender_phone_number": self.user.get_phone_number()
+                "recipients_phone_number": self.target_phone_number,
+                "sender_phone_number": self.user.get_phone_number(),
             }
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             print("USER SENT SERVER HIS COMMUNICATION REQUEST")
@@ -217,26 +217,44 @@ class CommunicationRequest(Request):
 
             if dict_received["code"] == ServerSideProtocolCodes.INVALID_PHONE_NUMBER.value:
                 raise ValueError("Target phone number or/and sender's phone number sent to server is invalid")
-            elif dict_received["code"] == ProtocolCodes.initConnectionAESExchange.value:
-                print("Entering connection aes exchange")
-                target_public_key = dict_received["public_key"]
-                shared_secret = create_shared_secret(receiver_public_key=target_public_key,
-                                                     sender_private_key=self.user.get_private_key())
+            elif dict_received["code"] == ServerSideProtocolCodes.SEND_YOUR_ENCRYPTED_MESSAGE.value:
+                print("Entering send message")
+                user_public_key = self.user.get_public_key()
+                user_private_key = self.user.get_private_key()
+
+                receiver_public_key = dict_received["public_key"]
+                shared_secret = create_shared_secret(receiver_public_key=receiver_public_key,
+                                                     sender_private_key=user_private_key)
+
+                # Generate a random salt and derive an AES key from the shared secret
                 salt = generate_salt()
-                kdf_wrapped_shared_secret = kdf_wrapper(shared_secret, salt=salt)
+                kdf_wrapped_shared_secret = kdf_wrapper(shared_secret, salt)
 
-                aes_key = generate_aes_key()
-                iv = generate_random_iv()
-                wrapped_aes_key = wrap_cbc_aes_key(aes_key=aes_key, kdf_wrapped_shared_secret=kdf_wrapped_shared_secret)
-                encrypted_message = encrypt_message_with_aes_cbc_key(message=self.message.encode(), aes_key=aes_key,
-                                                                     iv=iv)
+                # Generate a random AES key to encrypt the secret message
+                secret_aes_key = generate_aes_key()
 
-                message_dict = {"code": UserSideRequestCodes.SEND_MESSAGE.value,
-                                "wrapped_aes_key": wrapped_aes_key,
-                                "encrypted_message": encrypted_message
-                                }
+                # Encrypt the secret code using AES-CBC
+                iv_for_secret = generate_random_iv()
 
-                # TODO:::::: CONTINUE
+                encrypted_message = encrypt_message_with_aes_cbc_key(message=self.message.encode(),
+                                                                     aes_key=secret_aes_key,
+                                                                     iv=iv_for_secret)
+
+                # Wrap (encrypt) the AES key using the derived AES key
+                iv_for_wrapped_key = generate_random_iv()
+                wrapped_key_data = wrap_cbc_aes_key(aes_key=secret_aes_key,
+                                                    kdf_wrapped_shared_secret=kdf_wrapped_shared_secret,
+                                                    iv=iv_for_wrapped_key)
+
+                message_dict = {
+                    "code": UserSideRequestCodes.SEND_MESSAGE.value,
+                    "sender_public_key": user_public_key,
+                    "wrapped_aes_key": wrapped_key_data,
+                    "iv_for_wrapped_key": iv_for_wrapped_key,
+                    "encrypted_message": encrypted_message,
+                    "iv_for_message": iv_for_secret,
+                    "salt": salt,
+                }
             else:
                 return
 

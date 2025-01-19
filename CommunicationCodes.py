@@ -18,6 +18,7 @@ class ServerSideProtocolCodes(Enum):
     CONNECT_REQUEST_NOT_ACCEPTED = 107
     INVALID_PHONE_NUMBER = 108
     INVALID_SECRET_CODE = 109
+    SEND_YOUR_ENCRYPTED_MESSAGE = 111
 
 class UserSideRequestCodes(Enum):
     SEND_PHONE_NUMBER = 102
