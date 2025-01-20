@@ -93,7 +93,7 @@ def load_private_key_from_file(file_path):
     Args:
         file_path (str): Path to the PEM file.
     Returns:
-        rsa.RSAPrivateKey: The loaded private key.
+        EllipticCurvePrivateKey: The loaded private key.
     """
     with open(file_path, "rb") as private_file:
         private_key = serialization.load_pem_private_key(
@@ -109,7 +109,7 @@ def load_public_key_from_file(file_path):
     Args:
         file_path (str): Path to the PEM file.
     Returns:
-        rsa.RSAPublicKey: The loaded public key.
+        EllipticCurvePublicKey: The loaded public key.
     """
     with open(file_path, "rb") as public_file:
         public_key = serialization.load_pem_public_key(public_file.read())

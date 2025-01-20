@@ -50,12 +50,9 @@ class RegisterRequestProtocol(Protocol):
         try:
             server_public_key = self.server.get_public_key()
             # server_private_key = self.server.get_private_key()
-            try:
-                self.send_public_key_to_user(server_public_key)
-                print("SERVER SENT USER PUBLIC KEY")
-            except OSError as error:
-                print(f"Failed to send public key to user, error {error}")
-                self.send_general_server_error(f"Failed to send public key to user, error {error}")
+
+            self.send_public_key_to_user(server_public_key)
+            print("SERVER SENT USER PUBLIC KEY")
 
             send_phone_number_request_dict = receive_json_as_dict_through_established_connection(self.conn)
 
@@ -116,7 +113,7 @@ class RegisterRequestProtocol(Protocol):
     def send_public_key_to_user(self, public_key):
         message_dict = {
             "code": ServerSideProtocolCodes.SEND_PUBLIC_KEY.value,
-            "public_key": str(serialize_public_ecc_key_to_pem_format(public_key))
+            "public_key": serialize_public_ecc_key_to_pem_format(public_key).decode('utf-8')
         }
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 

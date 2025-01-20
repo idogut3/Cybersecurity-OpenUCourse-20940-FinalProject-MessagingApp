@@ -1,5 +1,7 @@
 import os
 
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+
 from GlobalCryptoUtils import generate_ecc_keys
 from GlobalValidations import is_valid_email, is_valid_phone_number
 from KeyLoaders import save_keys_to_files, serialize_public_ecc_key_to_pem_format
@@ -139,7 +141,7 @@ class User:
         self.waiting_messages = []
 
 
-def set_server_public_key(server_public_key):
+def set_server_public_key(server_public_key:EllipticCurvePublicKey):
     server_public_key_path = os.path.join(USER_PATH, "server_public_key.pem")
     with open(server_public_key_path, "wb") as public_file:
         public_file.write(serialize_public_ecc_key_to_pem_format(server_public_key))
@@ -158,7 +160,7 @@ def create_user() -> User:
     email = get_email_validated()
     phone_number = get_validated_phone_number()
     public_key, private_key = generate_ecc_keys()
-    user_path = USER_PATH.join(phone_number)
+    user_path = os.path.join(USER_PATH, phone_number)
     save_keys_to_files(user_path, public_key, private_key)
     new_user = User(version=USER_VERSION, public_key=public_key, private_key=private_key, email=email,
                     phone_number=phone_number, user_path=user_path)

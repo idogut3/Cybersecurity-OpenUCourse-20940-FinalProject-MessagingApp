@@ -3,7 +3,6 @@ import time
 from abc import ABC, abstractmethod
 
 from cryptography.hazmat.primitives.keywrap import aes_key_wrap
-from google.oauth2 import message
 
 from CommunicationCodes import ProtocolCodes, GeneralCodes, ServerSideProtocolCodes, UserSideRequestCodes
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
@@ -11,9 +10,10 @@ from CommunicationUtils import send_dict_as_json_through_established_socket_conn
     receive_json_as_dict_through_established_connection
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_key, encrypt_message_with_aes_cbc_key, \
     generate_random_iv, wrap_cbc_aes_key, generate_salt
-from KeyLoaders import serialize_public_ecc_key_to_pem_format
+from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key
 from Message import Message
-from user_side.User import User, get_validated_phone_number, get_email_validated, USER_PATH, get_server_public_key
+from user_side.User import User, get_validated_phone_number, get_email_validated, USER_PATH, get_server_public_key, \
+    set_server_public_key
 import re
 
 from user_side.user_utils import load_public_key, load_private_key
@@ -75,7 +75,12 @@ class RegisterRequest(Request):
                 raise ValueError("No public_key value in dict received in Registration.SEND_PUBLIC_KEY")
 
             server_public_key = dict_received["public_key"]
-            self.user.set_server_public_key(server_public_key)
+            received_public_key_pem = server_public_key.encode('utf-8')
+            deserialized_public_key = deserialize_pem_to_ecc_public_key(received_public_key_pem)
+
+            print("SERVER PUBLIC KEY TYPE RECEIVED", type(server_public_key))
+            set_server_public_key(deserialized_public_key)
+
             phone_number = self.user.get_phone_number()
 
             self.send_phone_number(phone_number=phone_number)
@@ -91,9 +96,11 @@ class RegisterRequest(Request):
             if not register_request_dict[
                        "code"] == ServerSideProtocolCodes.REGISTER_SUCCESS.value:
                 print("Registration failed received")
+                return False
 
             else:
                 print("Registration successes")
+                return True
 
         except OSError as error:
             print(f"Error in RegisterRequest {error}")
@@ -198,7 +205,8 @@ class ConnectReqeust(Request):
 
 
 class CommunicationRequest(Request):
-    def __init__(self, user, target_phone_number, message_to_user: str, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
+    def __init__(self, user, target_phone_number, message_to_user: str, server_ip=SERVER_IP,
+                 server_port=SERVER_DEFUALT_PORT):
         super().__init__(server_ip, server_port)
         self.user = user
         self.target_phone_number = target_phone_number

@@ -2,7 +2,7 @@ from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from GlobalCryptoUtils import generate_ecc_keys
 from GlobalValidations import is_valid_phone_number, is_valid_email
 from user_side import User
-from user_side.Requests import RegisterRequest, ConnectReqeust
+from user_side.Requests import RegisterRequest, ConnectReqeust, CommunicationRequest, CheckWaitingMessagesRequest
 from user_side.User import get_email_validated, get_validated_phone_number, connect_to_user
 from user_side.user_utils import load_public_key, load_private_key
 
@@ -46,7 +46,7 @@ def get_validated_option_number(lowest, highest):
     while True:
         try:
             # Prompt the user for input
-            number = int(input("Enter a number between 1 and 3: "))
+            number = int(input(f"Enter a number between {lowest} and {highest}: "))
 
             # Validate the range
             if lowest <= number <= highest:
@@ -60,6 +60,7 @@ def get_validated_option_number(lowest, highest):
 
 def decide_which_process_to_perform(chosen_number):
     connected = False
+    user = None
     if chosen_number == 1:
         user = User.create_user()
         register_request = RegisterRequest(user=user)
@@ -73,9 +74,17 @@ def decide_which_process_to_perform(chosen_number):
         display_options_after_connection()
         chosen_number = get_validated_option_number(1, 2)
 
-        # if chosen_number == 1: TODO::::::::::::::::::::::::::
-        #     send_message_request =
-        # elif chosen_number == 2:
+        if chosen_number == 1:
+            print("Entering send message request")
+            print("Enter The phone number you want to send a message to:")
+            target_phone_number = get_validated_phone_number()
+            message = input("Write what message you want to send him")
+            send_message_request = CommunicationRequest(user=user, target_phone_number=target_phone_number, message_to_user=message)
+            send_message_request.run()
+
+        elif chosen_number == 2:
+            print("Entering check waiting messages protocol")
+            check_waiting_messages_request = CheckWaitingMessagesRequest(user=user)
 
 
 
