@@ -1,4 +1,5 @@
 import socket
+import time
 
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from GlobalCryptoUtils import generate_ecc_keys
@@ -102,3 +103,6 @@ def decide_which_process_to_perform(chosen_number):
             print("OK exiting")
             connected = False
             conn.close()
+        time.sleep(10) # SLEEPING FOR 10 SECONDS TO SEE MESSAGE
+        connect_request = ConnectReqeust(conn=conn, user=user)
+        connected = connect_request.run()
