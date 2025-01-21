@@ -2,10 +2,10 @@ from user_side.user_utils import load_public_key
 
 
 class User:
-    def __init__(self, phone_number, public_key, secret_code):
+    def __init__(self, phone_number, public_key, secret_code_hash):
         self.phone_number = phone_number  # String or int
         self.public_key = public_key  # Public key (e.g., string or bytes)
-        self.secret_code = secret_code  # Secret code for verification/authentication
+        self.secret_code_hash = secret_code_hash  # Secret code for verification/authentication
         self.waiting_messages = []  # List to store messages (list of Message objects)
 
     # Getters
@@ -17,6 +17,9 @@ class User:
     def get_phone_number(self):
         """Get the user's phone number."""
         return self.phone_number
+
+    def get_secret_code_hash(self):
+        return self.secret_code_hash
 
     def add_message(self, message):
         """

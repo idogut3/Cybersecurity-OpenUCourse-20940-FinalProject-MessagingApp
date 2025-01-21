@@ -8,7 +8,8 @@ from cryptography.hazmat.primitives.keywrap import aes_key_wrap
 from CommunicationCodes import ProtocolCodes, GeneralCodes, ServerSideProtocolCodes, UserSideRequestCodes
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
-    receive_json_as_dict_through_established_connection
+    receive_json_as_dict_through_established_connection, \
+    receive_json_as_dict_through_established_connection_under_time_cap
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_key, encrypt_message_with_aes_cbc_key, \
     generate_random_iv, wrap_cbc_aes_key, generate_salt
 from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key, clean_key_string
@@ -150,7 +151,8 @@ class ConnectReqeust(Request):
             server_public_key = deserialize_pem_to_ecc_public_key(get_server_public_key().encode("utf-8"))
             print(f"SERVER PUBLIC KEY IS TYPE {type(server_public_key)}")
             # Establish a shared secret
-            shared_secret = create_shared_secret(receiver_public_key = server_public_key,sender_private_key= user_private_key)
+            shared_secret = create_shared_secret(receiver_public_key=server_public_key,
+                                                 sender_private_key=user_private_key)
 
             # Generate a random salt and derive an AES key from the shared secret
             salt = generate_salt()
@@ -174,11 +176,11 @@ class ConnectReqeust(Request):
             message_dict = {
                 "code": ProtocolCodes.initConnectionAESExchange.value,
                 "phone_number": phone_number,
-                "wrapped_aes_key":   base64.b64encode(wrapped_key_data).decode("utf-8"),
-                "iv_for_wrapped_key":   base64.b64encode(iv_for_wrapped_key).decode("utf-8"),
-                "encrypted_secret_code":   base64.b64encode(encrypted_secret_code).decode("utf-8"),
-                "iv_for_secret":   base64.b64encode(iv_for_secret).decode("utf-8"),
-                "salt":   base64.b64encode(salt).decode("utf-8"),
+                "wrapped_aes_key": base64.b64encode(wrapped_key_data).decode("utf-8"),
+                "iv_for_wrapped_key": base64.b64encode(iv_for_wrapped_key).decode("utf-8"),
+                "encrypted_secret_code": base64.b64encode(encrypted_secret_code).decode("utf-8"),
+                "iv_for_secret": base64.b64encode(iv_for_secret).decode("utf-8"),
+                "salt": base64.b64encode(salt).decode("utf-8"),
             }
 
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
@@ -186,8 +188,10 @@ class ConnectReqeust(Request):
 
             data_dict_received_back = receive_json_as_dict_through_established_connection(conn=self.conn)
             print("RESPONSE = \n\n\n", data_dict_received_back)
-            if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value and data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
-                raise ValueError(f"Code Replied with (FOR CONNECT REQUEST) is INVALID GOT CODE {data_dict_received_back["code"]} WHICH IS NOT {ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value}")
+            if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value and \
+                    data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+                raise ValueError(
+                    f"Code Replied with (FOR CONNECT REQUEST) is INVALID GOT CODE {data_dict_received_back["code"]} WHICH IS NOT {ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value}")
 
             if data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
                 print("ConnectRequestFailed")
@@ -226,7 +230,7 @@ class CommunicationRequest(Request):
                 user_public_key = self.user.get_public_key()
                 user_private_key = self.user.get_private_key()
 
-                user_public_key_pem =  serialize_public_ecc_key_to_pem_format(user_public_key)
+                user_public_key_pem = serialize_public_ecc_key_to_pem_format(user_public_key)
 
                 receiver_public_key = dict_received["public_key"]
 
@@ -256,15 +260,16 @@ class CommunicationRequest(Request):
                 wrapped_key_data = wrap_cbc_aes_key(aes_key=secret_aes_key,
                                                     kdf_wrapped_shared_secret=kdf_wrapped_shared_secret,
                                                     iv=iv_for_wrapped_key)
-                print(f"user_public_key_pem is 00000=>>>> {user_public_key_pem} and its type is  {type(user_public_key_pem)}")
+                print(
+                    f"user_public_key_pem is 00000=>>>> {user_public_key_pem} and its type is  {type(user_public_key_pem)}")
                 message_dict = {
                     "code": UserSideRequestCodes.SEND_MESSAGE.value,
-                    "sender_public_key":  base64.b64encode(user_public_key_pem).decode('utf-8'),
+                    "sender_public_key": base64.b64encode(user_public_key_pem).decode('utf-8'),
                     "wrapped_aes_key": base64.b64encode(wrapped_key_data).decode('utf-8'),
                     "iv_for_wrapped_key": base64.b64encode(iv_for_wrapped_key).decode('utf-8'),
                     "encrypted_message": base64.b64encode(encrypted_message).decode('utf-8'),
-                    "iv_for_message":  base64.b64encode(iv_for_secret).decode('utf-8'),
-                    "salt":  base64.b64encode(salt).decode('utf-8'),
+                    "iv_for_message": base64.b64encode(iv_for_secret).decode('utf-8'),
+                    "salt": base64.b64encode(salt).decode('utf-8'),
                 }
                 send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
@@ -301,13 +306,17 @@ class CheckWaitingMessagesRequest(Request):
             if number_of_messages_waiting < 0:
                 raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
             elif number_of_messages_waiting == 0:
+                print(f"dict is {dict_received}")
                 print("NO MESSAGES WAITING")
 
             while number_of_messages_waiting > 0:
+                MAK_TIME_WAITING_FOR_NEXT_MESSAGE = 5
+                start_time = time.time()
                 print(f"NUMBER OF WAITING MESSAGES LEFT TO READ IS, {number_of_messages_waiting}")
 
                 senders_phone_number = dict_received["senders_phone_number"]
-                senders_public_key = deserialize_pem_to_ecc_public_key(base64.b64decode(dict_received["senders_public_key"]))
+                senders_public_key = deserialize_pem_to_ecc_public_key(
+                    base64.b64decode(dict_received["senders_public_key"]))
                 wrapped_aes_key = base64.b64decode(dict_received["wrapped_aes_key"])
                 iv_for_wrapped_key = base64.b64decode(dict_received["iv_for_wrapped_key"])
                 encrypted_message = base64.b64decode(dict_received["encrypted_message"])
@@ -323,17 +332,24 @@ class CheckWaitingMessagesRequest(Request):
 
                 message_received.display_decrypted_message(receiver_private_key=self.user.get_private_key())
 
-                dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
+                dict_received = receive_json_as_dict_through_established_connection_under_time_cap(conn=self.conn,
+                                                                                    time_to_wait_for_input_in_seconds=MAK_TIME_WAITING_FOR_NEXT_MESSAGE)
+                elapsed_time = time.time() - start_time
+                if elapsed_time > MAK_TIME_WAITING_FOR_NEXT_MESSAGE:
+                    break
 
                 if not dict_received["code"] == ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value:
                     raise ValueError("EXPECTED CHECK_WAITING_MESSAGES_APPROVED CODE BUT DID NOT RECEIVE IT")
 
-                number_of_messages_waiting = int(dict_received["remaining_messages"])
                 if number_of_messages_waiting < 0:
                     raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
+                elif number_of_messages_waiting < 1:
+                    break
+
+                number_of_messages_waiting = int(dict_received["remaining_messages"])
 
             print("FINISHED READING ALL YOUR MESSAGES")
 
         except OSError as error:
-            print(f"Error in RegisterRequest {error}")
+            print(f"Error in CheckWaitingMessagesRequest {error}")
             self.send_general_client_error()

@@ -170,7 +170,7 @@ class ConnectRequestProtocol(Protocol):
             decrypted_secret_code = decrypt_message_with_aes_cbc_key(encrypted_message=encrypted_secret_code,
                                                                      aes_key=decrypted_aes_key,
                                                                      iv=iv_for_secret).decode("utf-8")
-
+            print(f"PHONE NUMBERRRRRRRR: IS {phone_number_received}")
             user = self.database.get_user_by_phone_number(phone_number=phone_number_received)
             if not self.database.is_secret_code_correct_for_user(user=user, code=decrypted_secret_code):
                 print(f"INVALID CODE GOT: {decrypted_secret_code}")

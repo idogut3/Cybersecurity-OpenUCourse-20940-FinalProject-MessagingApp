@@ -1,25 +1,18 @@
+from GlobalCryptoUtils import hash_secret_code
 from GlobalValidations import is_valid_phone_number
 from Message import Message
 from User import User
-
+import hashlib
 
 class DataBase:
     def __init__(self):
         self.users = {}  # Dictionary to store users, keyed by phone_number
 
-    def is_connected(self, user1, user2):
-        """
-        Check if user1 is explicitly connected to user2.
-        """
-        if user1 in self.users and user2 in self.users:
-            return user2 in self.users[user1].connections
-        return False
-
     def register_user(self, phone_number, public_key:bytes, secret_code):
         """
         Register a user with the given phone number.
         """
-        self.users[phone_number] = User(phone_number, public_key, secret_code)
+        self.users[phone_number] = User(phone_number, public_key, hash_secret_code(secret_code))
         return True
 
     def is_user_registered(self, phone_number):
@@ -49,7 +42,11 @@ class DataBase:
         Check if the given secret code matches the user's stored secret code.
         """
         if user in self.users.values():
-            return user.secret_code == code
+            salt = user.get_secret_code_hash()[:16]  # Extract the salt from the stored hash
+            stored_password_hash = user.get_secret_code_hash()[16:]  # Extract the hash part
+            salted_password = salt + code.encode('utf-8')
+            new_hash = hashlib.sha256(salted_password).hexdigest().encode('utf-8')
+            return new_hash == stored_password_hash
         print("User not found in the database.")
         return False
 
@@ -75,7 +72,7 @@ class DataBase:
 
     def get_waiting_messages_for_user(self, phone_number):
         """
-        Returns the waiting messages for the user with the given phone number.
+        Returns the waiting messages for the user with the given phone number. And clears the waiting messages dict
 
         Args:
             phone_number (str): The phone number of the user.
@@ -93,4 +90,6 @@ class DataBase:
             raise ValueError(f"No user registered with phone number {phone_number}.")
 
         user = self.users[phone_number]
-        return user.get_waiting_messages()
+        waiting_messages =  user.get_waiting_messages()
+        # user.clear_messages()
+        return waiting_messages

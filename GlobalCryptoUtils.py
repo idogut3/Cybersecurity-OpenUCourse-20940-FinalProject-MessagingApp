@@ -1,3 +1,4 @@
+import hashlib
 import os
 from cryptography.hazmat.primitives.ciphers import Cipher, modes
 from cryptography.hazmat.primitives.ciphers import algorithms
@@ -6,6 +7,15 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+
+# Function to hash a password
+def hash_secret_code(password: str) -> bytes:
+    salt = os.urandom(16)  # Generate a random salt
+    salted_password = salt + password.encode('utf-8')  # Combine salt and password
+    hashed_password = hashlib.sha256(salted_password).hexdigest()  # Hash with SHA-256
+    return salt + hashed_password.encode('utf-8')  # Store salt and hash together
+
 
 def generate_ecc_keys() -> tuple[EllipticCurvePublicKey, EllipticCurvePrivateKey]:
     # Generate ECC private key

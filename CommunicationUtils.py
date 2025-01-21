@@ -57,7 +57,7 @@ def receive_json_as_dict_through_established_connection(conn: socket.socket) -> 
         socket.error: If there's an error receiving data through the socket.
     """
 
-    conn.settimeout(CONNECTION_TIMEOUT_SECONDS) # If the socket doesn't receive data for CONNECTION_TIMEOUT_SECONDS then exiting the function
+    conn.settimeout(CONNECTION_TIMEOUT_SECONDS)
     try:
         # Read the 4-byte length prefix
         length_prefix = b""
@@ -94,3 +94,55 @@ def receive_json_as_dict_through_established_connection(conn: socket.socket) -> 
         raise socket.error(f"Socket error occurred: {e}")
 
 
+def receive_json_as_dict_through_established_connection_under_time_cap(conn: socket.socket, time_to_wait_for_input_in_seconds:int = CONNECTION_TIMEOUT_SECONDS) -> dict:
+    """
+    Receives JSON data from a socket connection and converts it into a dictionary.
+
+    Args:
+        conn (socket.socket): The socket connection to receive data from.
+        time_to_wait_for_input_in_seconds (int): If the socket doesn't receive data for time_to_wait_for_input_in_seconds then exiting the function
+
+    Returns:
+        dict: The received JSON data as a dictionary.
+
+    Raises:
+        ValueError: If the received data is not valid JSON.
+        socket.error: If there's an error receiving data through the socket.
+    """
+
+    conn.settimeout(time_to_wait_for_input_in_seconds)
+    try:
+        # Read the 4-byte length prefix
+        length_prefix = b""
+        while len(length_prefix) < JSON_LENGTH_PREFIX:
+            chunk = conn.recv(JSON_LENGTH_PREFIX - len(length_prefix))
+            if not chunk:
+                raise socket.error("Connection closed before receiving length prefix")
+            length_prefix += chunk
+
+        if len(length_prefix) < JSON_LENGTH_PREFIX:
+            raise socket.error("Incomplete length prefix received")
+
+        # Convert the length prefix from bytes to an integer
+        data_length = int.from_bytes(length_prefix, JSON_ENDIAN_BYTE_ORDER)
+
+        if data_length > MAX_ALLOWED_PAYLOAD_SIZE:
+            raise ValueError(f"Payload size {data_length} exceeds the maximum allowed size")
+
+        # Read the actual data
+        received_data = b""
+        while len(received_data) < data_length:
+            chunk = conn.recv(data_length - len(received_data))
+            if not chunk:
+                raise socket.error("Connection closed before receiving all data")
+            received_data += chunk
+
+        # Decode the received bytes into a JSON string and parse it into a dictionary
+        json_data = received_data.decode('utf-8')
+        return json.loads(json_data)
+    except socket.timeout:
+        return {}
+    except (json.JSONDecodeError, ValueError) as e:
+        raise ValueError(f"Failed to deserialize received data into JSON: {e}")
+    except socket.error as e:
+        raise socket.error(f"Socket error occurred: {e}")
