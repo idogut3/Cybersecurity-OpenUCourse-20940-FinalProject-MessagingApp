@@ -94,8 +94,13 @@ class RegisterRequestProtocol(Protocol):
             message_dict = {"code": ServerSideProtocolCodes.REGISTER_SUCCESS.value}
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
+            print("1111111111111111111111111111111111111111111111111111111111111111111111111111")
+            print("INBAR WAS HERE11111111111111111111111111")
             request_dict = receive_json_as_dict_through_established_connection(self.conn)
 
+            print("INBAR WAS HERE")
+            print("222222222222222222222222222222222222222222222222222222222222222222222222222")
+            print("RESPONSE GOTTEN IS :" , request_dict)
             if request_dict["code"] == ProtocolCodes.init_CheckWaitingMessagesCode.value:
                 protocol_instance = CheckWaitingMessagesProtocol(server=self.server,
                                                                  conn=self.conn,
@@ -112,6 +117,7 @@ class RegisterRequestProtocol(Protocol):
                 return
 
         except OSError:
+            print("ERROR HAS HAPPEND NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
             self.send_general_server_error(error_message)
             return
 
