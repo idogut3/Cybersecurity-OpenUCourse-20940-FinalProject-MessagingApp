@@ -1,3 +1,5 @@
+import socket
+
 from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from GlobalCryptoUtils import generate_ecc_keys
 from GlobalValidations import is_valid_phone_number, is_valid_email
@@ -35,6 +37,7 @@ def display_options_after_connection():
     print("Now that you are connected what do you want to do?")
     print("1. Send message")
     print("2. Show waiting messages")
+    print("3. Exit program")
 
 
 def get_validated_option_number(lowest, highest):
@@ -60,34 +63,42 @@ def get_validated_option_number(lowest, highest):
 def decide_which_process_to_perform(chosen_number):
     connected = False
     user = None
+    server_ip = SERVER_IP
+    server_port = SERVER_DEFUALT_PORT
+    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    conn.connect((server_ip, server_port))
+
     if chosen_number == 1:
         user = User.create_user()
-        register_request = RegisterRequest(user=user)
+        register_request = RegisterRequest(conn=conn, user=user)
         connected = register_request.run()
+        print("Write the secret code that you got from the server (That's for future connections)")
+        user_secret_code = get_secret_code()
+        user.set_secret_code(user_secret_code)
     elif chosen_number == 2:
         user = connect_to_user()
-        connect_request = ConnectReqeust(user=user)
+        user_secret_code = get_secret_code()
+        user.set_secret_code(user_secret_code)
+        connect_request = ConnectReqeust(conn=conn, user=user)
         connected = connect_request.run()
 
-    if connected:
+    while connected:
         display_options_after_connection()
-        chosen_number = get_validated_option_number(1, 2)
-
+        chosen_number = get_validated_option_number(1, 3)
         if chosen_number == 1:
             print("Entering send message request")
             print("Enter The phone number you want to send a message to:")
             target_phone_number = get_validated_phone_number()
             message = input("Write what message you want to send him")
-            send_message_request = CommunicationRequest(user=user, target_phone_number=target_phone_number, message_to_user=message)
+            send_message_request = CommunicationRequest(conn=conn, user=user, target_phone_number=target_phone_number,
+                                                        message_to_user=message)
             send_message_request.run()
 
         elif chosen_number == 2:
             print("Entering check waiting messages protocol")
-            check_waiting_messages_request = CheckWaitingMessagesRequest(user=user)
+            check_waiting_messages_request = CheckWaitingMessagesRequest(conn=conn, user=user)
             check_waiting_messages_request.run()
-
-
-
-
-
-
+        elif chosen_number == 3:
+            print("OK exiting")
+            connected = False
+            conn.close()

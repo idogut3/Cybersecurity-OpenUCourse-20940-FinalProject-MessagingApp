@@ -56,7 +56,6 @@ def receive_json_as_dict_through_established_connection(conn: socket.socket) -> 
         ValueError: If the received data is not valid JSON.
         socket.error: If there's an error receiving data through the socket.
     """
-    print("JSONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN1")
 
     conn.settimeout(CONNECTION_TIMEOUT_SECONDS) # If the socket doesn't receive data for CONNECTION_TIMEOUT_SECONDS then exiting the function
     try:
@@ -87,7 +86,6 @@ def receive_json_as_dict_through_established_connection(conn: socket.socket) -> 
 
         # Decode the received bytes into a JSON string and parse it into a dictionary
         json_data = received_data.decode('utf-8')
-        print("JSONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN2")
         return json.loads(json_data)
 
     except (json.JSONDecodeError, ValueError) as e:

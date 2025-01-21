@@ -179,8 +179,7 @@ def connect_to_user() -> User:
     print("Entering connect to user, please enter your phone number and email")
     email = get_email_validated()
     phone_number = get_validated_phone_number()
-    from user_side.menu import get_secret_code
-    secret_code = get_secret_code()
+
     try:
         USER_VERSION = 3
         user_path = os.path.join(USERS_PATH, phone_number)
@@ -197,8 +196,6 @@ def connect_to_user() -> User:
         if os.path.exists(public_key_path) and os.path.exists(server_public_key_path) and os.path.exists(private_key_path):
             user = User(version=USER_VERSION, public_key=public_key, private_key=private_key, phone_number=phone_number,
                         email=email, user_path=user_path)
-            user.set_secret_code(secret_code)
-            print("RETURNING USERRRRRRRRRRRRRRRRRRRRRRRRRRRR")
             return user
         else:
             raise OSError()

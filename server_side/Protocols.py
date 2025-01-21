@@ -2,7 +2,6 @@ import base64
 import socket
 from abc import ABC, abstractmethod
 
-
 from CommunicationCodes import GeneralCodes, UserSideRequestCodes, ServerSideProtocolCodes, ProtocolCodes
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection
@@ -94,13 +93,9 @@ class RegisterRequestProtocol(Protocol):
             message_dict = {"code": ServerSideProtocolCodes.REGISTER_SUCCESS.value}
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
-            print("1111111111111111111111111111111111111111111111111111111111111111111111111111")
-            print("INBAR WAS HERE11111111111111111111111111")
             request_dict = receive_json_as_dict_through_established_connection(self.conn)
 
-            print("INBAR WAS HERE")
-            print("222222222222222222222222222222222222222222222222222222222222222222222222222")
-            print("RESPONSE GOTTEN IS :" , request_dict)
+            print("RESPONSE GOTTEN IS :", request_dict)
             if request_dict["code"] == ProtocolCodes.init_CheckWaitingMessagesCode.value:
                 protocol_instance = CheckWaitingMessagesProtocol(server=self.server,
                                                                  conn=self.conn,
@@ -117,7 +112,7 @@ class RegisterRequestProtocol(Protocol):
                 return
 
         except OSError:
-            print("ERROR HAS HAPPEND NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+            print("Error in RegisterRequestProtocol")
             self.send_general_server_error(error_message)
             return
 
@@ -134,24 +129,26 @@ class ConnectRequestProtocol(Protocol):
         print("Executing ConnectRequestProtocol protocol.")
         try:
             phone_number_received = self.request_dict["phone_number"]
-            wrapped_aes_key =  base64.b64decode(self.request_dict["wrapped_aes_key"])
+            wrapped_aes_key = base64.b64decode(self.request_dict["wrapped_aes_key"])
             iv_for_wrapped_key = base64.b64decode(self.request_dict["iv_for_wrapped_key"])
             encrypted_secret_code = base64.b64decode(self.request_dict["encrypted_secret_code"])
             iv_for_secret = base64.b64decode(self.request_dict["iv_for_secret"])
             received_salt = base64.b64decode(self.request_dict["salt"])
 
-            print("REQUEST DICT IS:" , self.request_dict)
+            print("REQUEST DICT IS:", self.request_dict)
 
-            if not is_valid_phone_number(phone_number_received) or not self.database.is_user_registered(phone_number=phone_number_received):
+            if not is_valid_phone_number(phone_number_received) or not self.database.is_user_registered(
+                    phone_number=phone_number_received):
                 self.send_invalid_phone_number()
                 return False
             print("1")
-            user_public_key_bytes = clean_key_string(self.database.get_public_key_by_phone_number(phone_number=phone_number_received))
+            user_public_key_bytes = clean_key_string(
+                self.database.get_public_key_by_phone_number(phone_number=phone_number_received))
             print("1.5")
 
             print(f"user_public_key_bytes type: {type(user_public_key_bytes)}")
             print(f"user_public_key_bytes:\n\n\n {user_public_key_bytes}")
-            user_public_key_ecc_key =  load_public_key_from_data(user_public_key_bytes)
+            user_public_key_ecc_key = load_public_key_from_data(user_public_key_bytes)
             print("2")
             server_private_key = self.server.get_private_key()
             print("3")
@@ -210,6 +207,7 @@ class ConnectRequestProtocol(Protocol):
         }
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
+
 class CheckWaitingMessagesProtocol(Protocol):
     def __init__(self, server, conn: socket.socket, request_dict: dict, user_phone_number: str):
         super().__init__(server=server, conn=conn, request_dict=request_dict)
@@ -244,15 +242,17 @@ class CheckWaitingMessagesProtocol(Protocol):
 
         message_index = 0  # Initialize an index for the loop
         for message in waiting_messages:
-            remaining_messages = total_messages - (message_index + 1)  # Calculate remaining messages
+            remaining_messages = total_messages - message_index # Calculate remaining messages
+            message_public_key_pem = serialize_public_ecc_key_to_pem_format(message.get_senders_public_key())
+
             message_json_to_send = {"code": ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value,
                                     "senders_phone_number": self.user_phone_number,
-                                    "senders_public_key": message.get_senders_public_key(),
-                                    "wrapped_aes_key": message.get_wrapped_aes_key(),
-                                    "iv_for_wrapped_key": message.get_iv_for_wrapped_key(),
-                                    "encrypted_message": message.get_encrypted_message(),
-                                    "iv_for_message": message.get_iv_for_message(),
-                                    "salt": message.get_salt(),
+                                    "senders_public_key": base64.b64encode(message_public_key_pem).decode('utf-8'),
+                                    "wrapped_aes_key":  base64.b64encode(message.get_wrapped_aes_key()).decode('utf-8'),
+                                    "iv_for_wrapped_key":  base64.b64encode(message.get_iv_for_wrapped_key()).decode('utf-8'),
+                                    "encrypted_message":  base64.b64encode(message.get_encrypted_message()).decode('utf-8'),
+                                    "iv_for_message":  base64.b64encode(message.get_iv_for_message()).decode('utf-8'),
+                                    "salt":  base64.b64encode(message.get_salt()).decode('utf-8'),
                                     "remaining_messages": remaining_messages
                                     }
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_json_to_send)
@@ -282,7 +282,10 @@ class ProcessCommunicateProtocol(Protocol):
                 return
 
             print("APPROVED ProcessCommunicate SENDING USER JSON TO TELL HIM HE CAN SEND A MESSAGE")
-            self.send_encrypted_message_approved()
+            recipients_public_key_raw = self.database.get_public_key_by_phone_number(phone_number=recipients_phone_number)
+            print(f"THE  recipients_public_key_raw is {recipients_public_key_raw} and his type {type(recipients_public_key_raw)}")
+
+            self.send_encrypted_message_approved(recipients_public_key=recipients_public_key_raw)
 
             request_dict = receive_json_as_dict_through_established_connection(self.conn)
 
@@ -291,12 +294,14 @@ class ProcessCommunicateProtocol(Protocol):
             if request_dict["code"] != UserSideRequestCodes.SEND_MESSAGE.value:
                 raise ValueError("GOT UNEXPECTED USER MESSAGE CODE, EXISTING")
 
-            sender_public_key = request_dict["sender_public_key"]
-            wrapped_aes_key = request_dict["wrapped_aes_key"]
-            iv_for_wrapped_key = request_dict["iv_for_wrapped_key"]
-            encrypted_message = request_dict["encrypted_message"]
-            iv_for_message = request_dict["iv_for_message"]
-            salt = request_dict["salt"]
+            sender_public_key_pem = base64.b64decode(request_dict["sender_public_key"])
+            sender_public_key = deserialize_pem_to_ecc_public_key(sender_public_key_pem)
+            print(f"sender_public_key {sender_public_key}, and his type is {type(sender_public_key)}")
+            wrapped_aes_key =  base64.b64decode(request_dict["wrapped_aes_key"])
+            iv_for_wrapped_key =  base64.b64decode(request_dict["iv_for_wrapped_key"])
+            encrypted_message =  base64.b64decode(request_dict["encrypted_message"])
+            iv_for_message =  base64.b64decode(request_dict["iv_for_message"])
+            salt =  base64.b64decode(request_dict["salt"])
 
             message = Message(senders_phone_number=sender_phone_number, senders_public_key=sender_public_key,
                               wrapped_aes_key=wrapped_aes_key, iv_for_wrapped_key=iv_for_wrapped_key,
@@ -310,6 +315,9 @@ class ProcessCommunicateProtocol(Protocol):
             print(f"Error at ProcessCommunicateProtocol {error}")
             self.send_general_server_error()
 
-    def send_encrypted_message_approved(self):
-        message_dict = {"code": ServerSideProtocolCodes.SEND_YOUR_ENCRYPTED_MESSAGE.value}
+    def send_encrypted_message_approved(self, recipients_public_key):
+        message_dict = {"code": ServerSideProtocolCodes.SEND_YOUR_ENCRYPTED_MESSAGE.value,
+                        "public_key":  recipients_public_key
+                        }
+        print(f"THE ENCRYPTED MESSAGE APPROVED WE SEND IS THIS:::: {message_dict}")
         send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)

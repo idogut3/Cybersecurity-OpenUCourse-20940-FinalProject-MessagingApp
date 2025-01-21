@@ -133,3 +133,4 @@ def clean_key_string(key_string: str) -> bytes:
         key_string = key_string.encode("utf-8").decode("unicode_escape")  # Unescape
         return key_string.encode("utf-8")  # Convert back to bytes
     raise ValueError("Invalid key string format")
+

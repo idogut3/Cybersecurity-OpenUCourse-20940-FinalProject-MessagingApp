@@ -11,7 +11,7 @@ from CommunicationUtils import send_dict_as_json_through_established_socket_conn
     receive_json_as_dict_through_established_connection
 from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_key, encrypt_message_with_aes_cbc_key, \
     generate_random_iv, wrap_cbc_aes_key, generate_salt
-from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key
+from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key, clean_key_string
 from Message import Message
 from user_side.User import User, get_validated_phone_number, get_email_validated, USERS_PATH, get_server_public_key, \
     set_server_public_key
@@ -21,12 +21,9 @@ from user_side.user_utils import load_public_key, load_private_key
 
 
 class Request(ABC):
-    def __init__(self, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
-        self.server_ip = server_ip
-        self.server_port = server_port
+    def __init__(self, conn):
         try:
-            self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.conn.connect((server_ip, server_port))
+            self.conn = conn
         except Exception as error:
             print(f"Failed to connect client socket, error: {error}")
 
@@ -57,8 +54,8 @@ def ask_user_if_received_secret_code():
 
 
 class RegisterRequest(Request):
-    def __init__(self, user, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
-        super().__init__(server_ip, server_port)
+    def __init__(self, user, conn):
+        super().__init__(conn=conn)
         self.user = user
 
     def run(self):
@@ -137,8 +134,8 @@ def get_secret_code_validated_to_send():
 
 
 class ConnectReqeust(Request):
-    def __init__(self, user, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
-        super().__init__(server_ip, server_port)
+    def __init__(self, user, conn):
+        super().__init__(conn=conn)
         self.user = user
 
     def run(self):
@@ -204,9 +201,8 @@ class ConnectReqeust(Request):
 
 
 class CommunicationRequest(Request):
-    def __init__(self, user, target_phone_number, message_to_user: str, server_ip=SERVER_IP,
-                 server_port=SERVER_DEFUALT_PORT):
-        super().__init__(server_ip, server_port)
+    def __init__(self, user, target_phone_number, message_to_user: str, conn):
+        super().__init__(conn=conn)
         self.user = user
         self.target_phone_number = target_phone_number
         self.message = message_to_user
@@ -230,8 +226,15 @@ class CommunicationRequest(Request):
                 user_public_key = self.user.get_public_key()
                 user_private_key = self.user.get_private_key()
 
+                user_public_key_pem =  serialize_public_ecc_key_to_pem_format(user_public_key)
+
                 receiver_public_key = dict_received["public_key"]
-                shared_secret = create_shared_secret(receiver_public_key=receiver_public_key,
+
+                received_public_key_pem = clean_key_string(receiver_public_key)
+
+                deserialized_public_key = deserialize_pem_to_ecc_public_key(received_public_key_pem)
+
+                shared_secret = create_shared_secret(receiver_public_key=deserialized_public_key,
                                                      sender_private_key=user_private_key)
 
                 # Generate a random salt and derive an AES key from the shared secret
@@ -253,15 +256,15 @@ class CommunicationRequest(Request):
                 wrapped_key_data = wrap_cbc_aes_key(aes_key=secret_aes_key,
                                                     kdf_wrapped_shared_secret=kdf_wrapped_shared_secret,
                                                     iv=iv_for_wrapped_key)
-
+                print(f"user_public_key_pem is 00000=>>>> {user_public_key_pem} and its type is  {type(user_public_key_pem)}")
                 message_dict = {
                     "code": UserSideRequestCodes.SEND_MESSAGE.value,
-                    "sender_public_key": user_public_key,
-                    "wrapped_aes_key": wrapped_key_data,
-                    "iv_for_wrapped_key": iv_for_wrapped_key,
-                    "encrypted_message": encrypted_message,
-                    "iv_for_message": iv_for_secret,
-                    "salt": salt,
+                    "sender_public_key":  base64.b64encode(user_public_key_pem).decode('utf-8'),
+                    "wrapped_aes_key": base64.b64encode(wrapped_key_data).decode('utf-8'),
+                    "iv_for_wrapped_key": base64.b64encode(iv_for_wrapped_key).decode('utf-8'),
+                    "encrypted_message": base64.b64encode(encrypted_message).decode('utf-8'),
+                    "iv_for_message":  base64.b64encode(iv_for_secret).decode('utf-8'),
+                    "salt":  base64.b64encode(salt).decode('utf-8'),
                 }
                 send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
 
@@ -275,8 +278,8 @@ class CommunicationRequest(Request):
 
 
 class CheckWaitingMessagesRequest(Request):
-    def __init__(self, user, server_ip=SERVER_IP, server_port=SERVER_DEFUALT_PORT):
-        super().__init__(server_ip, server_port)
+    def __init__(self, user, conn):
+        super().__init__(conn=conn)
         self.user = user
 
     def run(self):
@@ -304,12 +307,12 @@ class CheckWaitingMessagesRequest(Request):
                 print(f"NUMBER OF WAITING MESSAGES LEFT TO READ IS, {number_of_messages_waiting}")
 
                 senders_phone_number = dict_received["senders_phone_number"]
-                senders_public_key = dict_received["senders_public_key"]
-                wrapped_aes_key = dict_received["wrapped_aes_key"]
-                iv_for_wrapped_key = dict_received["iv_for_wrapped_key"]
-                encrypted_message = dict_received["encrypted_message"]
-                iv_for_message = dict_received["iv_for_message"]
-                salt = dict_received["salt"]
+                senders_public_key = deserialize_pem_to_ecc_public_key(base64.b64decode(dict_received["senders_public_key"]))
+                wrapped_aes_key = base64.b64decode(dict_received["wrapped_aes_key"])
+                iv_for_wrapped_key = base64.b64decode(dict_received["iv_for_wrapped_key"])
+                encrypted_message = base64.b64decode(dict_received["encrypted_message"])
+                iv_for_message = base64.b64decode(dict_received["iv_for_message"])
+                salt = base64.b64decode(dict_received["salt"])
 
                 message_received = Message(senders_phone_number=senders_phone_number,
                                            senders_public_key=senders_public_key,
