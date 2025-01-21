@@ -15,7 +15,7 @@ class DataBase:
             return user2 in self.users[user1].connections
         return False
 
-    def register_user(self, phone_number, public_key, secret_code):
+    def register_user(self, phone_number, public_key:bytes, secret_code):
         """
         Register a user with the given phone number.
         """

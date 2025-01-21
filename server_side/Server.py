@@ -9,7 +9,7 @@ from CommunicationConstants import SERVER_DEFUALT_PORT, SERVER_IP
 from CommunicationUtils import receive_json_as_dict_through_established_connection
 from DataBase import DataBase
 from GlobalCryptoUtils import generate_ecc_keys
-from KeyLoaders import save_keys_to_files, load_public_key_from_file
+from KeyLoaders import save_keys_to_files, load_public_key_from_file, load_private_key_from_file
 from server_side.Protocols import Protocol
 
 PROTOCOL_MAP = {
@@ -44,7 +44,7 @@ class Server:
     def get_private_key(self):
         file_path = self.ECC_KEYS_FILE_PATH + "\\" + "private_key.pem"
         try:
-            return load_public_key_from_file(file_path)
+            return load_private_key_from_file(file_path)
         except KeyError as error:
             raise KeyError(f"Failed to get private key, error {error}")
 

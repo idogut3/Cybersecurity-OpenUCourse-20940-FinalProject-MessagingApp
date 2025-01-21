@@ -1,3 +1,6 @@
+from user_side.user_utils import load_public_key
+
+
 class User:
     def __init__(self, phone_number, public_key, secret_code):
         self.phone_number = phone_number  # String or int
@@ -8,6 +11,7 @@ class User:
     # Getters
     def get_public_key(self):
         """Get the user's public key."""
+        print(f'PUBLIC KEY IS TYPE {type(self.public_key)}')
         return self.public_key
 
     def get_phone_number(self):

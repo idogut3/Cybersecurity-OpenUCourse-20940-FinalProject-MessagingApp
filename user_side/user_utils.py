@@ -3,6 +3,7 @@ import random
 from cryptography.hazmat.primitives.asymmetric.ec import  EllipticCurvePublicKey, EllipticCurvePrivateKey
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 
 def load_private_key(private_key_file: str):
@@ -39,6 +40,24 @@ def load_public_key(public_key_file: str):
             backend=default_backend()
         )
     return public_key
+
+def load_public_key_from_data(public_key_data: bytes) -> EllipticCurvePublicKey:
+    """
+    Load a public key from a PEM-encoded public key data.
+
+    Args:
+        public_key_data (bytes): PEM-encoded public key data.
+
+    Returns:
+        EllipticCurvePublicKey: The deserialized public key.
+    """
+    try:
+        public_key = load_pem_public_key(public_key_data)
+        if not isinstance(public_key, EllipticCurvePublicKey):
+            raise ValueError("Provided key is not an Elliptic Curve Public Key.")
+        return public_key
+    except Exception as e:
+        raise ValueError(f"Failed to load public key: {e}")
 
 def generate_random_code():
     """

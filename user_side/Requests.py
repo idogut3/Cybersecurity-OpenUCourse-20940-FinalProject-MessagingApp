@@ -1,3 +1,4 @@
+import base64
 import socket
 import time
 from abc import ABC, abstractmethod
@@ -12,7 +13,7 @@ from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_ke
     generate_random_iv, wrap_cbc_aes_key, generate_salt
 from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key
 from Message import Message
-from user_side.User import User, get_validated_phone_number, get_email_validated, USER_PATH, get_server_public_key, \
+from user_side.User import User, get_validated_phone_number, get_email_validated, USERS_PATH, get_server_public_key, \
     set_server_public_key
 import re
 
@@ -143,16 +144,16 @@ class ConnectReqeust(Request):
     def run(self):
         print("INITIATING CONNECT REQUEST")
         try:
-            secret_code = get_secret_code_validated_to_send()
+            secret_code = self.user.get_secret_code()
             phone_number = self.user.get_phone_number()
 
-            user_public_key = self.user.get_public_key()
+            # user_public_key = self.user.get_public_key()
             user_private_key = self.user.get_private_key()
-
-            server_public_key = get_server_public_key()
-
+            print(f"USER PRIVATE KEY IS TYPE {type(user_private_key)}")
+            server_public_key = deserialize_pem_to_ecc_public_key(get_server_public_key().encode("utf-8"))
+            print(f"SERVER PUBLIC KEY IS TYPE {type(server_public_key)}")
             # Establish a shared secret
-            shared_secret = create_shared_secret(server_public_key, user_private_key)
+            shared_secret = create_shared_secret(receiver_public_key = server_public_key,sender_private_key= user_private_key)
 
             # Generate a random salt and derive an AES key from the shared secret
             salt = generate_salt()
@@ -173,25 +174,23 @@ class ConnectReqeust(Request):
             wrapped_key_data = wrap_cbc_aes_key(aes_key=secret_aes_key,
                                                 kdf_wrapped_shared_secret=kdf_wrapped_shared_secret,
                                                 iv=iv_for_wrapped_key)
-            # Send encrypted data and the IV
             message_dict = {
                 "code": ProtocolCodes.initConnectionAESExchange.value,
                 "phone_number": phone_number,
-                "wrapped_aes_key": wrapped_key_data,
-                "iv_for_wrapped_key": iv_for_wrapped_key,
-                "encrypted_secret_code": encrypted_secret_code,
-                "iv_for_secret": iv_for_secret,
-                "salt": salt,
+                "wrapped_aes_key":   base64.b64encode(wrapped_key_data).decode("utf-8"),
+                "iv_for_wrapped_key":   base64.b64encode(iv_for_wrapped_key).decode("utf-8"),
+                "encrypted_secret_code":   base64.b64encode(encrypted_secret_code).decode("utf-8"),
+                "iv_for_secret":   base64.b64encode(iv_for_secret).decode("utf-8"),
+                "salt":   base64.b64encode(salt).decode("utf-8"),
             }
 
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             print("USER SENT SERVER HIS CONNECT REQUEST")
 
             data_dict_received_back = receive_json_as_dict_through_established_connection(conn=self.conn)
-
-            if data_dict_received_back[
-                "code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value or ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
-                raise ValueError("Code Replied with (FOR CONNECT REQUEST) is INVALID")
+            print("RESPONSE = \n\n\n", data_dict_received_back)
+            if data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value and data_dict_received_back["code"] != ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
+                raise ValueError(f"Code Replied with (FOR CONNECT REQUEST) is INVALID GOT CODE {data_dict_received_back["code"]} WHICH IS NOT {ServerSideProtocolCodes.CONNECT_REQUEST_ACCEPTED.value}")
 
             if data_dict_received_back["code"] == ServerSideProtocolCodes.CONNECT_REQUEST_NOT_ACCEPTED.value:
                 print("ConnectRequestFailed")
@@ -222,7 +221,7 @@ class CommunicationRequest(Request):
             send_dict_as_json_through_established_socket_connection(conn=self.conn, data=message_dict)
             print("USER SENT SERVER HIS COMMUNICATION REQUEST")
             dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
-            print("USER received RESPONSE  :", dict_received)
+            print("USER received RESPONSE:", dict_received)
 
             if dict_received["code"] == ServerSideProtocolCodes.INVALID_PHONE_NUMBER.value:
                 raise ValueError("Target phone number or/and sender's phone number sent to server is invalid")
@@ -294,12 +293,16 @@ class CheckWaitingMessagesRequest(Request):
             if not dict_received["code"] == ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value:
                 raise ValueError("EXPECTED CHECK_WAITING_MESSAGES_APPROVED CODE BUT DID NOT RECEIVE IT")
 
-            number_of_messages_waiting = int(dict_received["number_of_waiting"])
+            number_of_messages_waiting = int(dict_received["remaining_messages"])
 
             if number_of_messages_waiting < 0:
                 raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
+            elif number_of_messages_waiting == 0:
+                print("NO MESSAGES WAITING")
 
             while number_of_messages_waiting > 0:
+                print(f"NUMBER OF WAITING MESSAGES LEFT TO READ IS, {number_of_messages_waiting}")
+
                 senders_phone_number = dict_received["senders_phone_number"]
                 senders_public_key = dict_received["senders_public_key"]
                 wrapped_aes_key = dict_received["wrapped_aes_key"]
@@ -322,7 +325,7 @@ class CheckWaitingMessagesRequest(Request):
                 if not dict_received["code"] == ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value:
                     raise ValueError("EXPECTED CHECK_WAITING_MESSAGES_APPROVED CODE BUT DID NOT RECEIVE IT")
 
-                number_of_messages_waiting = int(dict_received["number_of_waiting"])
+                number_of_messages_waiting = int(dict_received["remaining_messages"])
                 if number_of_messages_waiting < 0:
                     raise ValueError("NEGATIVE MESSAGES WAITING IS RECEIVED FROM SERVER - INVALID")
 

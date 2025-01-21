@@ -5,9 +5,10 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from GlobalCryptoUtils import generate_ecc_keys
 from GlobalValidations import is_valid_email, is_valid_phone_number
 from KeyLoaders import save_keys_to_files, serialize_public_ecc_key_to_pem_format
+
 from user_side.user_utils import load_public_key, load_private_key
 
-USER_PATH = "Cybersecurity-OpenUCourse-20940-FinalProject-MessagingApp\\user_side\\users"
+USERS_PATH = "Cybersecurity-OpenUCourse-20940-FinalProject-MessagingApp\\user_side\\users"
 
 
 class User:
@@ -27,7 +28,7 @@ class User:
         self.private_key = private_key  # User's private key
         self.phone_number = phone_number  # User's phone number
         self.email = email
-        self.code = 0  # Initialized as 0, updated when registered
+        self.secret_code = 0  # Initialized as 0, updated when registered
         self.is_connected_to_server = False  # Boolean to track server connection status
         self.waiting_messages = []  # List of messages waiting to be processed
         self.server_public_key = None
@@ -59,6 +60,12 @@ class User:
 
     def get_is_connected_to_server(self) -> bool:
         return self.is_connected_to_server
+
+    def get_secret_code(self):
+        return self.secret_code
+
+    def set_secret_code(self, code: str):
+        self.secret_code = code
 
     def is_connected_to(self, phone_number):
         """
@@ -141,14 +148,14 @@ class User:
         self.waiting_messages = []
 
 
-def set_server_public_key(server_public_key:EllipticCurvePublicKey):
-    server_public_key_path = os.path.join(USER_PATH, "server_public_key.pem")
+def set_server_public_key(server_public_key: EllipticCurvePublicKey):
+    server_public_key_path = os.path.join(USERS_PATH, "server_public_key.pem")
     with open(server_public_key_path, "wb") as public_file:
         public_file.write(serialize_public_ecc_key_to_pem_format(server_public_key))
 
 
 def get_server_public_key():
-    server_public_key_path = os.path.join(USER_PATH, "server_public_key.pem")
+    server_public_key_path = os.path.join(USERS_PATH, "server_public_key.pem")
     with open(server_public_key_path, "r") as public_file:
         file = public_file.read()
     return file
@@ -160,7 +167,7 @@ def create_user() -> User:
     email = get_email_validated()
     phone_number = get_validated_phone_number()
     public_key, private_key = generate_ecc_keys()
-    user_path = os.path.join(USER_PATH, phone_number)
+    user_path = os.path.join(USERS_PATH, phone_number)
     save_keys_to_files(user_path, public_key, private_key)
     new_user = User(version=USER_VERSION, public_key=public_key, private_key=private_key, email=email,
                     phone_number=phone_number, user_path=user_path)
@@ -172,20 +179,29 @@ def connect_to_user() -> User:
     print("Entering connect to user, please enter your phone number and email")
     email = get_email_validated()
     phone_number = get_validated_phone_number()
+    from user_side.menu import get_secret_code
+    secret_code = get_secret_code()
     try:
         USER_VERSION = 3
-        user_path = USER_PATH.join(phone_number)
-        public_key_path = user_path.join("public_key.pem")
-        server_public_key_path = user_path.join("server_public_key.pem")
-        private_key_path = user_path.join("private_key.pem")
+        user_path = os.path.join(USERS_PATH, phone_number)
+        #print(f"USER PATH IS: , {user_path}")
+        public_key_path = os.path.join(user_path, "public_key.pem")
+        private_key_path = os.path.join(user_path, "private_key.pem")
+
+        server_public_key_path = os.path.join(USERS_PATH,"server_public_key.pem" )
+
 
         public_key = load_public_key(public_key_path)
         private_key = load_private_key(private_key_path)
 
-        if os.path.exists(public_key_path) and os.path.exists(server_public_key_path) and os.path.exists(
-                private_key_path):
-            return User(version=USER_VERSION, public_key=public_key, private_key=private_key, phone_number=phone_number,
+        if os.path.exists(public_key_path) and os.path.exists(server_public_key_path) and os.path.exists(private_key_path):
+            user = User(version=USER_VERSION, public_key=public_key, private_key=private_key, phone_number=phone_number,
                         email=email, user_path=user_path)
+            user.set_secret_code(secret_code)
+            print("RETURNING USERRRRRRRRRRRRRRRRRRRRRRRRRRRR")
+            return user
+        else:
+            raise OSError()
     except OSError:
         raise OSError("User didn't exist cannot connect to it")
 
@@ -208,7 +224,7 @@ def get_validated_phone_number():
 
     # Loop until a valid phone number is provided
     while not validated_phone_number:
-        phone_number = input("Enter your phone number: ")
+        phone_number = input("Enter phone number: ")
         validated_phone_number = is_valid_phone_number(phone_number)
 
         if not validated_phone_number:

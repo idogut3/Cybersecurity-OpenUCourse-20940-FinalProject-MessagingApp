@@ -1,3 +1,4 @@
+import base64
 import os
 
 from cryptography.hazmat.primitives import serialization
@@ -114,3 +115,21 @@ def load_public_key_from_file(file_path):
     with open(file_path, "rb") as public_file:
         public_key = serialization.load_pem_public_key(public_file.read())
     return public_key
+
+
+def clean_key_string(key_string: str) -> bytes:
+    """
+    Clean a string that represents a bytes object, ensuring it becomes valid bytes.
+
+    Args:
+        key_string (str): The string representation of a bytes object.
+
+    Returns:
+        bytes: The actual bytes.
+    """
+    if key_string.startswith("b'") and key_string.endswith("'"):
+        # Strip the leading b' and trailing ', then unescape the content
+        key_string = key_string[2:-1]  # Remove b' and '
+        key_string = key_string.encode("utf-8").decode("unicode_escape")  # Unescape
+        return key_string.encode("utf-8")  # Convert back to bytes
+    raise ValueError("Invalid key string format")

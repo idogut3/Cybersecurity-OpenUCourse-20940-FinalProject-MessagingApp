@@ -20,7 +20,6 @@ def get_secret_code() -> str:
 
         # Check if the code is 6 digits long and numeric
         if code.isdigit() and len(code) == 6:
-            print("Code validated successfully.")
             return code
         else:
             print("Invalid code. Please enter a 6-digit numeric code.")
@@ -85,6 +84,7 @@ def decide_which_process_to_perform(chosen_number):
         elif chosen_number == 2:
             print("Entering check waiting messages protocol")
             check_waiting_messages_request = CheckWaitingMessagesRequest(user=user)
+            check_waiting_messages_request.run()
 
 
 
