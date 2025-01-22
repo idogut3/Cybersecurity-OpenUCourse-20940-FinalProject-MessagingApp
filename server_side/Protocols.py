@@ -106,7 +106,7 @@ class RegisterRequestProtocol(Protocol):
                 protocol_instance = ProcessCommunicateProtocol(server=self.server,
                                                                conn=self.conn,
                                                                request_dict=request_dict,
-                                                               user_phone_number=phone_number)
+                                                              senders_phone_number=phone_number)
                 protocol_instance.run()
             else:
                 return
@@ -141,23 +141,19 @@ class ConnectRequestProtocol(Protocol):
                     phone_number=phone_number_received):
                 self.send_invalid_phone_number()
                 return False
-            print("1")
             user_public_key_bytes = clean_key_string(
                 self.database.get_public_key_by_phone_number(phone_number=phone_number_received))
-            print("1.5")
 
-            print(f"user_public_key_bytes type: {type(user_public_key_bytes)}")
-            print(f"user_public_key_bytes:\n\n\n {user_public_key_bytes}")
+            # print(f"user_public_key_bytes type: {type(user_public_key_bytes)}")
+            # print(f"user_public_key_bytes:\n\n\n {user_public_key_bytes}")
             user_public_key_ecc_key = load_public_key_from_data(user_public_key_bytes)
-            print("2")
             server_private_key = self.server.get_private_key()
-            print("3")
 
-            print(f"USER PUBLIC KEY TYPE {type(user_public_key_ecc_key)}")
-            print(f"USER PUBLIC KEY IS:\n {user_public_key_ecc_key}")
+            #print(f"USER PUBLIC KEY TYPE {type(user_public_key_ecc_key)}")
+            #print(f"USER PUBLIC KEY IS:\n {user_public_key_ecc_key}")
 
-            print(f"SERVER PRIVATE KEY TYPE {type(server_private_key)}")
-            print(f"SERVER PRIVATE KEY IS:\n {server_private_key}")
+            #print(f"SERVER PRIVATE KEY TYPE {type(server_private_key)}")
+            #print(f"SERVER PRIVATE KEY IS:\n {server_private_key}")
 
             # Reconstruct the derived AES key using the same shared secret and salt
             shared_secret = create_shared_secret(user_public_key_ecc_key, server_private_key)
@@ -170,7 +166,7 @@ class ConnectRequestProtocol(Protocol):
             decrypted_secret_code = decrypt_message_with_aes_cbc_key(encrypted_message=encrypted_secret_code,
                                                                      aes_key=decrypted_aes_key,
                                                                      iv=iv_for_secret).decode("utf-8")
-            print(f"PHONE NUMBERRRRRRRR: IS {phone_number_received}")
+
             user = self.database.get_user_by_phone_number(phone_number=phone_number_received)
             if not self.database.is_secret_code_correct_for_user(user=user, code=decrypted_secret_code):
                 print(f"INVALID CODE GOT: {decrypted_secret_code}")
@@ -192,7 +188,7 @@ class ConnectRequestProtocol(Protocol):
                 protocol_instance = ProcessCommunicateProtocol(server=self.server,
                                                                conn=self.conn,
                                                                request_dict=request_dict,
-                                                               user_phone_number=phone_number_received)
+                                                               senders_phone_number=phone_number_received)
                 protocol_instance.run()
             else:
                 return
@@ -246,7 +242,7 @@ class CheckWaitingMessagesProtocol(Protocol):
             message_public_key_pem = serialize_public_ecc_key_to_pem_format(message.get_senders_public_key())
 
             message_json_to_send = {"code": ServerSideProtocolCodes.CHECK_WAITING_MESSAGES_APPROVED.value,
-                                    "senders_phone_number": self.user_phone_number,
+                                    "senders_phone_number": message.get_senders_phone_number(),
                                     "senders_public_key": base64.b64encode(message_public_key_pem).decode('utf-8'),
                                     "wrapped_aes_key":  base64.b64encode(message.get_wrapped_aes_key()).decode('utf-8'),
                                     "iv_for_wrapped_key":  base64.b64encode(message.get_iv_for_wrapped_key()).decode('utf-8'),
@@ -260,16 +256,16 @@ class CheckWaitingMessagesProtocol(Protocol):
 
 
 class ProcessCommunicateProtocol(Protocol):
-    def __init__(self, server, conn: socket.socket, request_dict: dict, user_phone_number: str):
+    def __init__(self, server, conn: socket.socket, request_dict: dict, senders_phone_number: str):
         super().__init__(server=server, conn=conn, request_dict=request_dict)
-        self.user_phone_number = user_phone_number
+        self.senders_phone_number = senders_phone_number
 
     def run(self):
         """Implementation of the protocol method."""
         print("Executing ProcessCommunicateProtocol protocol.")
         try:
             recipients_phone_number = self.request_dict["recipients_phone_number"]
-            sender_phone_number = self.user_phone_number
+            sender_phone_number = self.senders_phone_number
 
             if not is_valid_phone_number(recipients_phone_number) or not is_valid_phone_number(sender_phone_number):
                 self.send_invalid_phone_number(error_description="Phone number is invalid for recipient or sender's")
