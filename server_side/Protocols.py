@@ -10,7 +10,7 @@ from GlobalValidations import is_valid_phone_number
 from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key, clean_key_string
 from Message import Message
 from server_side.utils import send_by_secure_channel
-from user_side.user_utils import generate_random_code, load_public_key, load_public_key_from_data
+from user_side.user_utils import generate_random_code, load_public_key_from_data
 
 
 class Protocol(ABC):
@@ -67,8 +67,11 @@ class RegisterRequestProtocol(Protocol):
                 raise
             print("SERVER RECEIVED PHONE NUMBER FROM USER")
             phone_number = send_phone_number_request_dict["phone_number"]
-            if not is_valid_phone_number(phone_number) and not self.database.is_user_registered(phone_number):
+            if not is_valid_phone_number(phone_number):
                 error_message = "Phone number is not validated"
+                raise
+            if self.database.is_user_registered(phone_number):
+                error_message = "User already registered"
                 raise
             print("PHONE NUMBER FROM USER IS VALIDATED")
             random_code = generate_random_code()

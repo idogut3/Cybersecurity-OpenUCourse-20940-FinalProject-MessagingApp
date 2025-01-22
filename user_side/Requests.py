@@ -1,12 +1,9 @@
 import base64
-import socket
 import time
 from abc import ABC, abstractmethod
 
-from cryptography.hazmat.primitives.keywrap import aes_key_wrap
 
 from CommunicationCodes import ProtocolCodes, GeneralCodes, ServerSideProtocolCodes, UserSideRequestCodes
-from CommunicationConstants import SERVER_IP, SERVER_DEFUALT_PORT
 from CommunicationUtils import send_dict_as_json_through_established_socket_connection, \
     receive_json_as_dict_through_established_connection, \
     receive_json_as_dict_through_established_connection_under_time_cap
@@ -14,11 +11,9 @@ from GlobalCryptoUtils import create_shared_secret, kdf_wrapper, generate_aes_ke
     generate_random_iv, wrap_cbc_aes_key, generate_salt
 from KeyLoaders import serialize_public_ecc_key_to_pem_format, deserialize_pem_to_ecc_public_key, clean_key_string
 from Message import Message
-from user_side.User import User, get_validated_phone_number, get_email_validated, USERS_PATH, get_server_public_key, \
+from user_side.User import get_server_public_key, \
     set_server_public_key
 import re
-
-from user_side.user_utils import load_public_key, load_private_key
 
 
 class Request(ABC):
@@ -69,7 +64,8 @@ class RegisterRequest(Request):
             dict_received = receive_json_as_dict_through_established_connection(conn=self.conn)
             print("USER received RESPONSE [RECEIVED SERVER'S PUBLIC KEY] :", dict_received)
             if dict_received["code"] != ServerSideProtocolCodes.SEND_PUBLIC_KEY.value:
-                raise ValueError("Wrong code received, was suppose to receive Registration.SEND_PUBLIC_KEY")
+                print(f"Wrong code received, was suppose to receive Registration.SEND_PUBLIC_KEY ({ServerSideProtocolCodes.SEND_PUBLIC_KEY.value}) Received code = {dict_received["code"]}")
+                return False
             if not "public_key" in dict_received:
                 raise ValueError("No public_key value in dict received in Registration.SEND_PUBLIC_KEY")
 
