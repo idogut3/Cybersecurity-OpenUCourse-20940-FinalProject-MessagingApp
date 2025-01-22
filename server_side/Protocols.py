@@ -213,10 +213,12 @@ class CheckWaitingMessagesProtocol(Protocol):
         print("Executing CheckWaitingMessagesProtocol protocol.")
         try:
             waiting_messages = self.database.get_waiting_messages_for_user(phone_number=self.user_phone_number)
+
             print("SERVER SENDING MESSAGES TO USER")
             self.send_waiting_messages(waiting_messages=waiting_messages)
             print("SERVER SENT USER ALL MESSAGES")
-
+            self.database.clear_messages_for_user(phone_number=self.user_phone_number)
+            print("SERVER CLEARED MESSAGES FOR USER")
         except OSError as error:
             print(f"Error at CheckWaitingMessagesProtocol {error}")
             self.send_general_server_error()

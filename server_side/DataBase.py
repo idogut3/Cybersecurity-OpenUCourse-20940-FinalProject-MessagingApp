@@ -90,6 +90,23 @@ class DataBase:
             raise ValueError(f"No user registered with phone number {phone_number}.")
 
         user = self.users[phone_number]
-        waiting_messages =  user.get_waiting_messages()
-        # user.clear_messages()
-        return waiting_messages
+        return user.get_waiting_messages()
+
+    def clear_messages_for_user(self, phone_number):
+        """
+        Clears all messages for the specified user by phone number.
+
+        Args:
+            phone_number (str): The phone number of the user whose messages are to be cleared.
+
+        Raises:
+            ValueError: If the phone number is invalid or if no user is registered with the provided phone number.
+        """
+        if not is_valid_phone_number(phone_number):
+            raise ValueError("Invalid phone number.")
+
+        if phone_number not in self.users:
+            raise ValueError(f"No user registered with phone number {phone_number}.")
+
+        user = self.users[phone_number]
+        user.clear_messages()
